@@ -3,263 +3,800 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>SIT Price Checker</title>
+<title>SIT Price Index</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap">
 <style>
-/* Layout: one-screen price checker. Latest fixing → history and scenario chart → fixings log → method. Same terminal look as the SIT index. */
+/* Layout: market-data sheet. Purpose → fixings → findings → one section per user question
+   (builders: what should this cost; operators/lenders: where is the margin and what moves it) → the data behind it
+   (throughput) → the proposal (SIT unit) → assumptions → method. Hairlines, no cards. */
 :root{
   --bg:#0b0d10; --panel:#101318; --raise:#161a21; --fg:#e7e9ec; --muted:#8e96a3; --faint:#5f6775;
   --rule:#1e232b; --grid:#191d24;
-  --sitb:#c98500; --sitf:#9085e9; --sitc:#1a9e8f; --up:#e5534b; --down:#3fb27f; --focus:#e7e9ec;
+  --sitb:#c98500; --sitf:#9085e9; --gpu:#1a9e8f; --up:#3fb27f; --down:#e5534b; --focus:#e7e9ec;
+  --own:#4a5260; --badbg:rgba(229,83,75,.12);
   --sans:"Geist",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
   --mono:"Geist Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
   color-scheme:dark;
 }
 @media (prefers-color-scheme:light){:root:not([data-theme="dark"]){
   --bg:#fafaf9; --panel:#ffffff; --raise:#f2f2f0; --fg:#0e1115; --muted:#5b636f; --faint:#8c939e;
-  --rule:#e1e3e6; --grid:#eceef0; --sitb:#a86f00; --sitf:#6250d6; --sitc:#008a78; --up:#c23a33; --down:#1d7f4f; --focus:#0e1115; color-scheme:light}}
+  --rule:#e1e3e6; --grid:#eceef0;
+  --sitb:#a86f00; --sitf:#6250d6; --gpu:#008a78; --up:#1d7f4f; --down:#c23a33; --focus:#0e1115;
+  --own:#b9bec7; --badbg:rgba(194,58,51,.10); color-scheme:light}}
 :root[data-theme="light"]{
   --bg:#fafaf9; --panel:#ffffff; --raise:#f2f2f0; --fg:#0e1115; --muted:#5b636f; --faint:#8c939e;
-  --rule:#e1e3e6; --grid:#eceef0; --sitb:#a86f00; --sitf:#6250d6; --sitc:#008a78; --up:#c23a33; --down:#1d7f4f; --focus:#0e1115; color-scheme:light}
+  --rule:#e1e3e6; --grid:#eceef0;
+  --sitb:#a86f00; --sitf:#6250d6; --gpu:#008a78; --up:#1d7f4f; --down:#c23a33; --focus:#0e1115;
+  --own:#b9bec7; --badbg:rgba(194,58,51,.10); color-scheme:light}
 *{box-sizing:border-box}
 html,body{margin:0}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:14.5px;line-height:1.5;-webkit-font-smoothing:antialiased}
-.wrap{max-width:1100px;margin:0 auto;padding-block:28px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:32px}
-h1,h2{margin:0;font-weight:600;letter-spacing:-.02em;text-wrap:balance}
-h1{font-size:clamp(26px,4vw,38px);line-height:1.08}
-h2{font-size:17px}
+.tape{border-bottom:1px solid var(--rule);background:var(--panel);overflow-x:auto;white-space:nowrap;padding-block:9px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.tape span.t{display:inline-flex;gap:8px;margin-right:26px;font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums}
+.tape .k{color:var(--muted)}
+.wrap{max-width:1200px;margin:0 auto;padding-block:30px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:52px}
+h1,h2,h3{margin:0;font-weight:600;letter-spacing:-.015em;text-wrap:balance}
+h1{font-size:clamp(30px,4.6vw,46px);line-height:1.04;letter-spacing:-.03em}
+h2{font-size:20px}
+h3{font-size:14px}
 p{margin:0}
 .lab{font-family:var(--mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
-.muted{color:var(--muted)}
 .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
-header{display:grid;gap:10px;border-bottom:1px solid var(--rule);padding-bottom:16px}
-header .what{max-width:70ch;color:var(--muted)}
-.status{font-family:var(--mono);font-size:12px;color:var(--muted);display:flex;gap:8px;align-items:center}
-.live{width:7px;height:7px;border-radius:50%;background:var(--faint);display:inline-block}
-.live.on{background:var(--down)}
-.fix{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--fg)}
-.fx{padding:14px 16px 14px 0;display:grid;gap:3px;border-bottom:1px solid var(--rule);min-width:0}
+.muted{color:var(--muted)}
+.small{font-size:12.5px}
+.sect{display:grid;gap:16px;scroll-margin-top:12px}
+.sect-h{display:grid;gap:6px;border-bottom:1px solid var(--rule);padding-bottom:12px}
+.sect-h .q{font-size:15px;max-width:76ch}
+.sect-h .use{font-size:13px;color:var(--muted);max-width:80ch}
+.hero{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:40px;align-items:start}
+.hero .intro{display:grid;gap:16px}
+.hero .what{font-size:17px;line-height:1.55;max-width:58ch}
+.hero .what b{font-weight:600}
+.uses{display:grid;border-top:1px solid var(--rule)}
+.uses a{display:grid;grid-template-columns:130px 1fr;gap:12px;padding:11px 0;border-bottom:1px solid var(--rule);text-decoration:none;color:var(--fg)}
+.uses a:hover .go{color:var(--fg)}
+.uses .who{font-family:var(--mono);font-size:12px;color:var(--muted);padding-top:1px}
+.uses .go{color:var(--faint);font-family:var(--mono);font-size:12px}
+.cmp{width:100%;border-collapse:collapse;font-size:12.5px}
+.cmp th,.cmp td{padding:7px 10px 7px 0;border-bottom:1px solid var(--rule);text-align:left;vertical-align:top}
+.cmp th{font-family:var(--mono);font-weight:500;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.cmp td:first-child{font-weight:600;white-space:nowrap}
+.cmp tr.us td:first-child{color:var(--sitb)}
+.cmp .n{color:var(--faint)}
+.fix{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--fg)}
+.fx{padding:14px 16px 14px 0;display:grid;gap:3px;min-width:0;border-bottom:1px solid var(--rule);align-content:start}
 .fx + .fx{padding-left:16px;border-left:1px solid var(--rule)}
 .fx .tick{font-family:var(--mono);font-size:12px;display:flex;gap:8px;align-items:center}
-.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
-.fx .v{font-family:var(--mono);font-size:clamp(28px,4vw,40px);font-weight:500;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;display:inline-block}
+.fx .v{font-family:var(--mono);font-size:clamp(26px,3.4vw,36px);font-weight:500;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.15}
 .fx .u{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
-.fx .chg{font-family:var(--mono);font-size:12.5px}
-.chg.up{color:var(--up)} .chg.down{color:var(--down)} .chg.flat{color:var(--muted)}
-.fx .m{font-size:12.5px;color:var(--muted)}
-.ctrls{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center}
-.ctrl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.ctrl > span{font-size:12.5px;color:var(--muted)}
+.fx .m{font-size:12.5px;color:var(--muted);margin-top:4px}
+.fx .m b{color:var(--fg);font-family:var(--mono);font-weight:500}
+.asum{display:flex;flex-wrap:wrap;gap:4px 14px;font-family:var(--mono);font-size:11.5px;color:var(--muted);padding-top:10px}
+.asum a{color:var(--fg)}
+.find{margin:0;padding:0;display:grid}
+.find li{list-style:none;display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:6px 12px;padding:12px 0;border-bottom:1px solid var(--rule);align-items:baseline}
+.find .n{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.find .t{font-size:14.5px;max-width:84ch}
+.find b{font-family:var(--mono);font-weight:500;font-variant-numeric:tabular-nums}
+.find .act{font-size:12.5px;color:var(--muted);grid-column:2}
+.find .act b{font-family:var(--sans);font-weight:500;color:var(--fg)}
+.find a.to{font-family:var(--mono);font-size:11.5px;color:var(--muted);white-space:nowrap;grid-row:1;grid-column:3}
 .opts{display:flex;flex-wrap:wrap;gap:4px}
 .opts button{font:inherit;font-family:var(--mono);font-size:12px;padding:5px 9px;border:1px solid var(--rule);background:transparent;color:var(--muted);border-radius:3px;cursor:pointer}
 .opts button:hover{color:var(--fg);border-color:var(--faint)}
 .opts button[aria-pressed=true]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
-button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
-.chart{position:relative;width:100%;min-height:320px}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.ctrls{display:flex;flex-wrap:wrap;gap:14px 28px;align-items:flex-end}
+.ctrl{display:grid;gap:6px}
+.ctrl > span{font-size:12.5px;color:var(--muted)}
+select{font:inherit;font-size:13px;background:var(--panel);color:var(--fg);border:1px solid var(--rule);border-radius:3px;padding:5px 8px;max-width:100%}
+.calc{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--fg)}
+.calc > div{padding:14px 16px 14px 0;display:grid;gap:3px;border-bottom:1px solid var(--rule);min-width:0}
+.calc > div + div{padding-left:16px;border-left:1px solid var(--rule)}
+.calc .v{font-family:var(--mono);font-size:28px;font-weight:500;font-variant-numeric:tabular-nums}
+.calc .u{font-size:12.5px;color:var(--muted)}
+.verdict{font-size:15px;max-width:80ch;border-left:2px solid var(--sitb);padding-left:14px}
+.verdict b{font-family:var(--mono);font-weight:500}
+.tw{overflow-x:auto}
+table.d{border-collapse:collapse;width:100%;font-size:12.5px;min-width:720px}
+table.d th,table.d td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--grid);white-space:nowrap}
+table.d th{font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--rule)}
+table.d td{font-family:var(--mono);font-variant-numeric:tabular-nums}
+table.d th:first-child,table.d td:first-child{text-align:left}
+table.d td.nm{font-family:var(--sans);font-weight:500}
+table.d td.l,table.d th.l{text-align:left}
+table.d tr.tr td{font-family:var(--mono);font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);text-align:left;padding-top:16px;border-bottom:1px solid var(--rule)}
+table.d tr.x td{color:var(--faint)}
+table.d tr.base td{font-weight:600;border-bottom:1px solid var(--rule)}
+table.d tbody tr:hover td{background:var(--raise)}
+.pos{color:var(--up)} .neg{color:var(--down)}
+.tag{font-family:var(--mono);font-size:10px;padding:1px 5px;border:1px solid currentColor;border-radius:2px;margin-left:6px;letter-spacing:.05em}
+.est{color:var(--sitb)}
+.chart{position:relative;width:100%}
 .chart svg{display:block;width:100%;height:auto;overflow:visible}
 .chart text{font-family:var(--mono);font-size:11px;fill:var(--muted)}
-.tip{position:absolute;pointer-events:none;background:var(--fg);color:var(--bg);font-family:var(--mono);font-size:11.5px;line-height:1.45;padding:6px 8px;border-radius:2px;white-space:nowrap;opacity:0;z-index:3}
+.tip{position:absolute;pointer-events:none;background:var(--fg);color:var(--bg);font-family:var(--mono);font-size:11.5px;line-height:1.4;padding:6px 8px;border-radius:2px;white-space:nowrap;transform:translate(-50%,calc(-100% - 10px));opacity:0;z-index:3}
+.tip.on{opacity:1}
 .legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12px;color:var(--muted);font-family:var(--mono)}
 .legend span{display:inline-flex;align-items:center;gap:6px}
-.sw{width:14px;height:0;border-top:2px solid currentColor;display:inline-block}
-.sw.dash{border-top-style:dashed}
-.note{font-size:12.5px;color:var(--muted);max-width:86ch}
-.tw{overflow-x:auto}
-table{border-collapse:collapse;width:100%;font-size:12.5px;min-width:640px}
-th,td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--grid);white-space:nowrap;font-variant-numeric:tabular-nums}
-th{font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--rule)}
-td{font-family:var(--mono)}
-th:first-child,td:first-child,th:last-child,td:last-child{text-align:left}
-td:last-child{font-family:var(--sans);color:var(--muted);white-space:normal}
-.empty{padding:28px 0;color:var(--muted);text-align:center;border:1px dashed var(--rule)}
-.method{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;border-top:1px solid var(--rule);padding-top:18px}
-.method ul{margin:0;padding-left:18px;display:grid;gap:6px;font-size:13px;max-width:62ch}
+.sw{width:12px;height:10px;display:inline-block;flex:none}
+.quote{font-size:14.5px;line-height:1.55;max-width:84ch;border-left:2px solid var(--gpu);padding-left:14px;margin:0}
+.quote cite{display:block;font-style:normal;font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:6px}
+.sub-h{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 20px;margin-top:6px}
+.sub-h p{font-size:13px;color:var(--muted);max-width:70ch}
+details{border-top:1px solid var(--rule);padding-top:10px}
+summary{cursor:pointer;font-family:var(--mono);font-size:12px;color:var(--muted)}
+details[open] summary{margin-bottom:12px}
+.asm{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-top:1px solid var(--rule)}
+.grp{padding:16px 22px 20px 0;display:grid;gap:18px;align-content:start;min-width:0;border-bottom:1px solid var(--rule)}
+.grp:nth-child(2n){padding-left:22px;padding-right:0;border-left:1px solid var(--rule)}
+.qq{display:grid;gap:7px}
+.qq .ql{font-size:13.5px;font-weight:500}
+.qq .qh{font-size:12.5px;color:var(--muted);line-height:1.45;max-width:58ch}
+.qq .qv{font-family:var(--mono);font-size:12.5px;color:var(--fg);min-width:9ch;text-align:right}
+.row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
+input[type=range]{width:100%;accent-color:var(--fg)}
+input[type=range]:disabled{opacity:.35}
+.btn{font:inherit;font-family:var(--mono);font-size:12px;padding:6px 10px;border:1px solid var(--fg);background:transparent;color:var(--fg);border-radius:3px;cursor:pointer}
+.method{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px}
+.method ol,.method ul{margin:0;padding-left:18px;display:grid;gap:7px;font-size:13.5px}
+.method li{max-width:64ch}
+.formula{font-family:var(--mono);font-size:12px;background:var(--raise);padding:12px 14px;overflow-x:auto;white-space:pre;border-left:2px solid var(--rule)}
 a{color:var(--fg);text-decoration-color:var(--faint);text-underline-offset:3px}
-@media (max-width:760px){.fix{grid-template-columns:1fr}.fx + .fx{padding-left:0;border-left:0}.method{grid-template-columns:1fr}}
+.live{width:7px;height:7px;border-radius:50%;background:var(--faint);display:inline-block;margin-right:8px;vertical-align:middle}
+.live.on{background:var(--up)}
+.status{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.empty{padding:28px 0;color:var(--muted);text-align:center;border:1px dashed var(--rule)}
+.readlist{margin:0;padding-left:18px;display:grid;gap:6px;font-size:14px;max-width:84ch}
+.official{font-family:var(--mono);font-size:11.5px;color:var(--sitb)}
+.sw.dash{height:0;border-top:2px dashed currentColor}
+.sw.line{height:0;border-top:2px solid currentColor}
+footer{font-size:12px;color:var(--faint);border-top:1px solid var(--rule);padding-top:14px}
+@media (max-width:960px){.hero,.method{grid-template-columns:1fr}.asm{grid-template-columns:1fr}.grp:nth-child(2n){padding-left:0;border-left:0}.fix{grid-template-columns:repeat(2,minmax(0,1fr))}.fx:nth-child(3){padding-left:0;border-left:0}}
+@media (max-width:640px){.fix,.calc{grid-template-columns:1fr}.fx + .fx,.calc > div + div{padding-left:0;border-left:0}.uses a{grid-template-columns:1fr;gap:2px}.find li{grid-template-columns:28px minmax(0,1fr)}.find a.to{grid-column:2;grid-row:auto}}
 </style>
 </head>
 <body>
 
 
+<div class="tape" id="tape" aria-label="Index tape"></div>
+
 <div class="wrap">
-<header>
-  <span class="lab">Standard Inference Token · after Xing (2026)</span>
-  <h1>SIT Price Checker</h1>
-  <p class="what">The daily price of a fixed amount of AI capability, whichever lab sells it: SITB for fixed-capability work, SITF for the frontier, SITC for a 70/30 basket. A new fixing is computed every morning from OpenRouter list prices. The chart projects three scenarios forward from the latest one.</p>
-  <span class="status"><span class="live" id="live"></span><span id="statusText">Loading fixings…</span></span>
-</header>
 
-<section aria-labelledby="h-latest" style="display:grid;gap:10px">
-  <h2 id="h-latest" class="lab" style="font-size:11px;font-weight:500">Latest fixing · <span id="latestDate">–</span></h2>
+<section class="hero">
+  <div class="intro">
+    <span class="lab">SIT · Standard Inference Token · after Xing (2026)</span>
+    <h1>SIT Price Index</h1>
+    <p class="what">GPU-hours now have reference prices. Finished AI work does not. The SIT Index prices <b>a constant amount of capability</b>, whichever lab sells it, and links that price to the GPU-hours needed to produce it. That gives a common unit for buying agent work and a way to measure who earns the margin between hardware and output.</p>
+    <nav class="uses" aria-label="What this page is for">
+      <a href="#builders"><span class="who">Builders</span><span>What should a month of agent work cost, and how much am I paying above the cheapest model that does the job? <span class="go">→</span></span></a>
+      <a href="#crunch"><span class="who">Operators, lenders</span><span>Does renting GPUs to sell tokens make money, and what is that margin most exposed to? <span class="go">→</span></span></a>
+      <a href="#unit"><span class="who">Speculators</span><span>Which numbers would a SIT market trade, how do they connect, and where could they go? <span class="go">→</span></span></a>
+      <a href="#compare"><span class="who">New here</span><span>How does SIT differ from the token indices that already exist? <span class="go">→</span></span></a>
+    </nav>
+  </div>
+  <div style="display:grid;gap:10px">
+    <span class="lab">Where SIT fits</span>
+    <div class="tw"><table class="cmp" style="min-width:480px">
+      <thead><tr><th>Index</th><th>Prices</th><th>Unit</th><th>Holds quality constant</th></tr></thead>
+      <tbody>
+        <tr><td>Ornn OCPI · Silicon Data</td><td>GPU rental</td><td class="mono">$/GPU-hr</td><td class="n">n/a</td></tr>
+        <tr><td>Ornn OTPI</td><td>Tokens, one index per lab</td><td class="mono">$/M tok</td><td class="n">No</td></tr>
+        <tr><td>Silicon Data SDLLMTK</td><td>Tokens, usage-weighted market</td><td class="mono">$/M tok</td><td class="n">No: falls when buyers switch to cheaper models</td></tr>
+        <tr class="us"><td>SIT Index</td><td>Tokens at fixed capability, two tiers</td><td class="mono">$/M SIT</td><td>Yes</td></tr>
+        <tr class="us"><td>SIT Throughput</td><td>Tokens produced per GPU-hour</td><td class="mono">tok/s/GPU</td><td>Yes, per model and speed</td></tr>
+      </tbody>
+    </table></div>
+    <p class="muted small">Usage-weighted indices answer "what did the market pay on average". SIT answers "what does the same work cost now", which is the number a budget, a hedge or a margin calculation needs.</p>
+  </div>
+</section>
+
+<section class="sect" aria-labelledby="h-fix">
+  <div class="sect-h"><h2 id="h-fix">Latest fixing · <span id="fixDate">–</span></h2><p class="status"><span class="live" id="live"></span><span id="status">Loading fixings…</span></p></div>
   <div class="fix">
-    <div class="fx"><div class="tick"><span class="dot" style="background:var(--sitb)"></span>SITB <span class="muted">fixed capability</span></div><div class="v" id="vB">–</div><div class="u">USD per 1M SIT</div><div class="chg flat" id="cB">–</div><div class="m" id="mB"></div></div>
-    <div class="fx"><div class="tick"><span class="dot" style="background:var(--sitf)"></span>SITF <span class="muted">frontier</span></div><div class="v" id="vF">–</div><div class="u">USD per 1M SIT</div><div class="chg flat" id="cF">–</div><div class="m" id="mF"></div></div>
-    <div class="fx"><div class="tick"><span class="dot" style="background:var(--sitc)"></span>SITC <span class="muted">70/30 basket</span></div><div class="v" id="vC">–</div><div class="u">USD per 1M SIT</div><div class="chg flat" id="cC">–</div><div class="m" id="mC"></div></div>
+    <div class="fx"><div class="tick"><span class="dot" style="background:var(--sitb)"></span>SITB <span class="muted">fixed capability</span></div>
+      <div class="v" id="vB">–</div><div class="u">$ per 1M SIT</div><div class="m" id="mB"></div></div>
+    <div class="fx"><div class="tick"><span class="dot" style="background:var(--sitf)"></span>SITF <span class="muted">frontier</span></div>
+      <div class="v" id="vF">–</div><div class="u">$ per 1M SIT</div><div class="m" id="mF"></div></div>
+    <div class="fx"><div class="tick"><span class="dot" style="background:var(--gpu)"></span>STI-F <span class="muted">heat rate</span></div>
+      <div class="v" id="vT">–</div><div class="u">M frontier tokens per B200-hour</div><div class="m" id="mT"></div></div>
+    <div class="fx"><div class="tick"><span class="dot" style="background:var(--fg)"></span>Crunch <span class="muted">SITF on B200</span></div>
+      <div class="v" id="vK">–</div><div class="u">$ per GPU-hour over rent</div><div class="m" id="mK"></div></div>
   </div>
+  <div class="asum" id="asum"></div>
 </section>
 
-<section aria-labelledby="h-chart" style="display:grid;gap:12px">
-  <h2 id="h-chart">Price history and scenarios</h2>
+<section class="sect" aria-labelledby="h-find">
+  <div class="sect-h"><h2 id="h-find">What the numbers say</h2><p class="use">Each finding names who it matters to and where the evidence is. All update with the assumptions.</p></div>
+  <ul class="find" id="findings"></ul>
+</section>
+
+<section class="sect" id="compare" aria-labelledby="h-cmp">
+  <div class="sect-h"><span class="lab">For new readers</span><h2 id="h-cmp">How SIT compares with existing token indices</h2>
+    <p class="q">Ornn and Silicon Data already publish token prices. They measure what the market paid on average. SIT measures what the same capability costs. The levels can look alike while meaning different things.</p></div>
+  <div class="tw"><table class="d" style="min-width:760px" id="cmpTable"></table></div>
+  <ul class="readlist" id="cmpRead"></ul>
+  <p class="muted small" id="cmpAsOf"></p>
+</section>
+
+<section class="sect" id="builders" aria-labelledby="h-b">
+  <div class="sect-h"><span class="lab">For builders</span><h2 id="h-b">Price your agent work in SIT</h2>
+    <p class="q">Same capability, very different prices. Pick your tier, volume and model to see what the work costs at the index and at the cheapest model that qualifies.</p></div>
   <div class="ctrls">
-    <div class="ctrl"><span>Tier</span><div class="opts" role="group" aria-label="Tier" id="optTier"><button type="button" data-v="sitf" aria-pressed="true">SITF</button><button type="button" data-v="sitb" aria-pressed="false">SITB</button><button type="button" data-v="sitc" aria-pressed="false">SITC</button></div></div>
-    <div class="ctrl"><span>Range shown for</span><div class="opts" role="group" aria-label="Scenario" id="optSc"><button type="button" data-v="base" aria-pressed="true">Baseline</button><button type="button" data-v="defl" aria-pressed="false">Fast deflation</button><button type="button" data-v="scar" aria-pressed="false">Scarcity</button></div></div>
-    <div class="ctrl"><span>Horizon</span><div class="opts" role="group" aria-label="Horizon" id="optH"><button type="button" data-v="12" aria-pressed="false">12 months</button><button type="button" data-v="36" aria-pressed="true">36 months</button></div></div>
+    <div class="ctrl"><span>Tier</span><div class="opts" role="group" aria-label="Tier" id="cTier"><button type="button" data-v="B">SITB · fixed capability</button><button type="button" data-v="F">SITF · frontier</button></div></div>
+    <div class="ctrl"><span>Monthly tokens on your current model</span><div class="opts" role="group" aria-label="Monthly volume" id="cVol"><button type="button" data-v="100">100M</button><button type="button" data-v="1000">1B</button><button type="button" data-v="10000">10B</button><button type="button" data-v="100000">100B</button></div></div>
+    <label class="ctrl" for="cModel"><span>Your current model</span><select id="cModel"></select></label>
   </div>
-  <div class="legend" id="legend"></div>
-  <div class="chart" id="chart"></div>
-  <p class="note" id="scText"></p>
+  <div class="calc">
+    <div><span class="lab">Your model</span><span class="v" id="kY">–</span><span class="u" id="kYu"></span></div>
+    <div><span class="lab">At the SIT index</span><span class="v" id="kI">–</span><span class="u" id="kIu"></span></div>
+    <div><span class="lab">Cheapest qualifying model</span><span class="v" id="kC">–</span><span class="u" id="kCu"></span></div>
+  </div>
+  <p class="verdict" id="kV"></p>
+  <div class="sub-h"><h3>Every qualifying model, priced per SIT</h3><p>Dot size is index weight; your model is outlined. Solid line: index. Dashed: cheapest to deliver. Log scale.</p></div>
+  <div class="chart" id="strip"></div>
+  <details><summary>Constituent table</summary>
+    <div class="tw"><table class="d">
+      <thead><tr><th>Model</th><th class="l">Lab</th><th>Score</th><th>In $/M</th><th>Out $/M</th><th>Blended $/M</th><th>Tokens per SIT</th><th>$/M SIT</th><th>Weight</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table></div>
+    <p class="muted small" style="margin-top:8px">Score: Artificial Analysis Intelligence Index v5. <span class="est">e</span>: input price estimated at one fifth of output. Tokens per SIT: how many of that model's tokens one SIT is worth.</p>
+  </details>
 </section>
 
-<section aria-labelledby="h-log" style="display:grid;gap:10px">
-  <h2 id="h-log">Fixing record</h2>
-  <div class="tw" id="logWrap"><table><thead><tr><th>Date</th><th>SITB</th><th>SITF</th><th>SITC</th><th>SITB cheapest</th><th>SITF cheapest</th><th>Note</th></tr></thead><tbody id="log"></tbody></table></div>
+<section class="sect" id="crunch" aria-labelledby="h-c">
+  <div class="sect-h"><span class="lab">For operators and lenders</span><h2 id="h-c">The crunch spread: who earns the GPU-hour</h2>
+    <p class="q">Revenue per GPU-hour (token price × tokens produced) minus GPU rent. Positive means renting GPUs to sell tokens pays. The other leg, owner margin, is rent minus the cost of owning the GPU.</p></div>
+  <blockquote class="quote">GPU prices higher and token prices lower means the crunch is compressing.<cite>Don Wilson, DRW. Gavin Baker replied that the spread is (token price × token volume) − rent, and Wilson agreed. This section uses Baker's form.</cite></blockquote>
+  <div class="legend">
+    <span><span class="sw" style="background:var(--own)"></span>Owner's cost</span><span><span class="sw" style="background:var(--gpu)"></span>Owner margin</span>
+    <span><span class="sw" style="background:var(--up);opacity:.75"></span>Producer margin</span><span><span class="sw" style="border:1.5px dashed var(--down)"></span>Producer loss</span>
+  </div>
+  <div class="chart" id="stack"></div>
+  <p class="muted small">Four lanes: each tier sold at its index price and at its cheapest-to-deliver price. The cheapest price is where competition sets the floor, so it is the lane that shows whether the squeeze is real.</p>
+
+  <div class="sub-h"><h3>What the spread is exposed to</h3><p>Change in crunch, $ per GPU-hour, from one move at a time. Use it to see which risk to hedge or lend against.</p></div>
+  <div class="tw"><table class="d" id="sens"></table></div>
+
+  <div class="sub-h"><h3>Where the spread goes from here</h3></div>
+  <div class="ctrls">
+    <div class="ctrl"><span>Like-for-like price, per year</span><div class="opts" role="group" aria-label="Price change" id="optLp"><button type="button" data-v="-20">−20%</button><button type="button" data-v="-30">−30%</button><button type="button" data-v="-50">−50%</button><button type="button" data-v="-70">−70%</button></div></div>
+    <div class="ctrl"><span>Same-model throughput, per year</span><div class="opts" role="group" aria-label="Throughput growth" id="optTg"><button type="button" data-v="0">0%</button><button type="button" data-v="20">+20%</button><button type="button" data-v="37">+37%</button><button type="button" data-v="60">+60%</button></div></div>
+    <div class="ctrl"><span>GPU rent, per year</span><div class="opts" role="group" aria-label="Rent change" id="optRg"><button type="button" data-v="-20">−20%</button><button type="button" data-v="0">Flat</button><button type="button" data-v="20">+20%</button></div></div>
+  </div>
+  <div class="tw"><table class="d" id="fwd"></table></div>
+  <p class="verdict" id="fwdV"></p>
 </section>
 
-<section class="method" aria-label="Method">
-  <div style="display:grid;gap:8px">
-    <h2>How each fixing is made</h2>
-    <ul>
-      <li>Every model scoring 25 or more on the Artificial Analysis Intelligence Index v5 qualifies: 25–44 for SITB, 45 and above for SITF.</li>
-      <li>Each model's price is its list price blended 3 input tokens to 1 output, rescaled to the tier anchor (30 or 55) in proportion to its score.</li>
-      <li>Models are weighted by OpenRouter request share, no lab above 30% of a tier. SITC is 70% SITB and 30% SITF by token count.</li>
-      <li>"Cheapest" is the lowest-cost qualifying model: what a redeemable SIT unit would be paid out in.</li>
-    </ul>
+<section class="sect" id="thr" aria-labelledby="h-t">
+  <div class="sect-h"><span class="lab">The data behind the spread</span><h2 id="h-t">Throughput index: tokens per GPU-hour</h2>
+    <p class="q">The conversion rate between GPU markets and token markets, like a heat rate in power. It depends on the model, the GPU and how fast each user is served, so a SIT unit has to name a speed class.</p></div>
+  <div class="ctrls"><div class="ctrl"><span>Speed class: tokens per second each user sees</span>
+    <div class="opts" role="group" aria-label="Speed class" id="optSpd"><button type="button" data-v="30">30</button><button type="button" data-v="50">50</button><button type="button" data-v="75">75</button><button type="button" data-v="100">100</button><button type="button" data-v="150">150</button></div></div></div>
+  <div class="legend"><span><span class="sw" style="background:var(--sitf)"></span>Kimi K3 on B200</span><span><span class="sw" style="background:var(--gpu)"></span>Kimi K3 on GB200 NVL72</span><span>● selected speed class</span></div>
+  <div class="chart" id="curve"></div>
+  <p class="muted small">Serving each user faster means smaller batches and fewer tokens per GPU: Kimi K3 on a B200 produces about 83% less at 150 tokens/s per user than at 30. Fast and slow tokens are different goods, like peak and off-peak power.</p>
+  <details><summary>All measured points, with cost per million tokens</summary>
+    <div class="tw"><table class="d" id="thrTable"></table></div>
+    <p class="muted small" style="margin-top:8px">SemiAnalysis InferenceX, late October 2026. Agentic-coding traces for Kimi K3 and MiniMax M3; the older 8K-in/1K-out test for gpt-oss-120b. Counts input and output tokens together. Owner cost is SemiAnalysis's hyperscaler cost of ownership per GPU-hour. Kimi K3 stands in for the frontier because closed labs don't publish throughput.</p>
+  </details>
+</section>
+
+<section class="sect" id="unit" aria-labelledby="h-u">
+  <div class="sect-h"><span class="lab">For speculators, and the proposal</span><h2 id="h-u">The SIT unit</h2>
+    <p class="q">One unit, two settlement routes. Builders take delivery as tokens; traders settle in cash against the same daily fixing. Because both use one number, arbitrage keeps them aligned, as in power markets.</p></div>
+  <div class="tw"><table class="d" style="min-width:640px" id="specTable"></table></div>
+</section>
+
+<section class="sect" id="history" aria-labelledby="h-hist">
+  <div class="sect-h"><span class="lab">For speculators</span><h2 id="h-hist">Price history and where it could go</h2>
+    <p class="q">Every daily fixing, with three scenarios projected from the latest one using Xing's price model. Overlay an existing index to see where SIT and the market average part ways.</p></div>
+  <div class="ctrls">
+    <div class="ctrl"><span>Tier</span><div class="opts" role="group" aria-label="Tier" id="hTier"><button type="button" data-v="sitf">SITF</button><button type="button" data-v="sitb">SITB</button><button type="button" data-v="sitc">SITC</button></div></div>
+    <div class="ctrl"><span>Range shown for</span><div class="opts" role="group" aria-label="Scenario" id="hSc"><button type="button" data-v="base">Baseline</button><button type="button" data-v="defl">Fast deflation</button><button type="button" data-v="scar">Scarcity</button></div></div>
+    <div class="ctrl"><span>Horizon</span><div class="opts" role="group" aria-label="Horizon" id="hH"><button type="button" data-v="12">12 months</button><button type="button" data-v="36">36 months</button></div></div>
+    <div class="ctrl"><span>Compare with</span><div class="opts" role="group" aria-label="Comparison index" id="hCmp"><button type="button" data-v="none">None</button><button type="button" data-v="sd">SDLLMTK</button><button type="button" data-v="Anthropic">OTPI Anthropic</button><button type="button" data-v="OpenAI">OTPI OpenAI</button></div></div>
   </div>
-  <div style="display:grid;gap:8px">
-    <h2>Scenarios and sources</h2>
+  <div class="legend" id="hLegend"></div>
+  <div class="chart" id="hChart"></div>
+  <p class="muted small" id="hScText"></p>
+  <p style="font-size:13.5px" id="hRead"></p>
+</section>
+
+<section class="sect" id="record" aria-labelledby="h-rec">
+  <div class="sect-h"><h2 id="h-rec">Fixing record</h2><p class="use">One row per day. The note says what changed. Raw data: <a href="/api/fixings">/api/fixings</a>, or <code>/api/fixings?date=YYYY-MM-DD</code> for one day with every constituent.</p></div>
+  <div class="tw"><table class="d" style="min-width:760px"><thead><tr><th>Date</th><th>SITB</th><th>SITF</th><th>SITC</th><th>SITB cheapest</th><th>SITF cheapest</th><th>SDLLMTK</th><th class="l">Note</th></tr></thead><tbody id="recBody"></tbody></table></div>
+</section>
+
+<section class="sect" id="assumptions" aria-labelledby="h-a">
+  <div class="sect-h"><h2 id="h-a">Assumptions</h2><p class="use">Every number above depends on these. The defaults model an agent workload on rented hardware with measured throughput.</p></div>
+  <div class="opts" role="group" aria-label="Presets" id="presets">
+    <button type="button" data-p="agent">Agent workload (default)</button>
+    <button type="button" data-p="xing">Xing paper as written</button>
+    <button type="button" data-p="equal">Equal-weighted labs</button>
+  </div>
+  <div class="asm">
+    <div class="grp">
+      <h3>What counts as SIT</h3>
+      <div class="qq"><span class="ql">Fixed-capability tier</span>
+        <div class="row"><input type="range" id="floor" min="15" max="40" step="1" aria-label="Fixed-capability minimum score"><span class="qv" id="vFloor"></span></div>
+        <span class="qh" id="hFloor"></span></div>
+      <div class="qq"><span class="ql">Frontier tier</span>
+        <div class="row"><input type="range" id="fcut" min="40" max="56" step="1" aria-label="Frontier minimum score"><span class="qv" id="vFcut"></span></div>
+        <span class="qh" id="hFcut"></span></div>
+      <div class="qq"><span class="ql">How hard to penalise weaker models</span>
+        <div class="opts" role="group" aria-label="Capability adjustment" id="optA"><button type="button" data-v="0">None</button><button type="button" data-v="1">Proportional</button><button type="button" data-v="2">Steep</button></div>
+        <span class="qh" id="hA"></span></div>
+    </div>
+    <div class="grp">
+      <h3>How tokens are priced</h3>
+      <div class="qq"><span class="ql">Workload</span>
+        <div class="opts" role="group" aria-label="Workload" id="optMix"><button type="button" data-v="1">Chat</button><button type="button" data-v="3">Agent</button><button type="button" data-v="10">Long-context agent</button><button type="button" data-v="0">Output only</button></div>
+        <span class="qh" id="hMix"></span></div>
+      <div class="qq"><span class="ql">Weighting</span>
+        <div class="opts" role="group" aria-label="Weighting" id="optW"><button type="button" data-v="vol">By usage share</button><button type="button" data-v="eq">Equally</button></div>
+        <div class="opts" role="group" aria-label="Lab cap" id="optCap"><button type="button" data-v="30">Cap any lab at 30%</button><button type="button" data-v="50">at 50%</button><button type="button" data-v="100">No cap</button></div>
+        <span class="qh" id="hW"></span></div>
+    </div>
+    <div class="grp">
+      <h3>GPUs: rent and throughput</h3>
+      <div class="qq"><span class="ql">GPU rent from</span>
+        <div class="opts" role="group" aria-label="GPU rent source" id="optSrc"><button type="button" data-v="ornn">Ornn OCPI</button><button type="button" data-v="sd">Silicon Data</button></div>
+        <span class="qh" id="rentGap"></span></div>
+      <div class="qq"><span class="ql">Throughput</span>
+        <div class="opts" role="group" aria-label="Throughput source" id="optThr"><button type="button" data-v="meas">Measured</button><button type="button" data-v="man">Set by hand</button></div>
+        <div class="row"><input type="range" id="tpsB" min="500" max="20000" step="500" aria-label="Fixed-capability tokens per second per H100"><span class="qv" id="vTpsB"></span></div>
+        <div class="row"><input type="range" id="tpsF" min="200" max="12000" step="100" aria-label="Frontier tokens per second per B200"><span class="qv" id="vTpsF"></span></div>
+        <span class="qh" id="hThr"></span></div>
+      <div class="qq"><span class="ql">Share of rented hours spent serving</span>
+        <div class="row"><input type="range" id="util" min="20" max="100" step="5" aria-label="Serving utilisation"><span class="qv" id="vUtil"></span></div></div>
+    </div>
+    <div class="grp">
+      <h3>Owning a GPU</h3>
+      <div class="qq"><span class="ql">Purchase price, all-in</span>
+        <div class="row"><input type="range" id="capH" min="15000" max="40000" step="1000" aria-label="H100 purchase price"><span class="qv" id="vCapH"></span></div>
+        <div class="row"><input type="range" id="capB" min="25000" max="70000" step="1000" aria-label="B200 purchase price"><span class="qv" id="vCapB"></span></div></div>
+      <div class="qq"><span class="ql">Useful life</span>
+        <div class="opts" role="group" aria-label="Useful life" id="optLife"><button type="button" data-v="3">3 years</button><button type="button" data-v="4">4 years</button><button type="button" data-v="5">5 years</button><button type="button" data-v="6">6 years</button></div></div>
+      <div class="qq"><span class="ql">Share of hours rented out</span>
+        <div class="row"><input type="range" id="occ" min="40" max="100" step="5" aria-label="Rental occupancy"><span class="qv" id="vOcc"></span></div>
+        <span class="qh" id="hOwn"></span></div>
+    </div>
+  </div>
+  <div><button type="button" class="btn" id="reset">Reset assumptions</button></div>
+</section>
+
+<section class="sect method" aria-label="Method">
+  <div style="display:grid;gap:10px;align-content:start">
+    <h2>Method and checks</h2>
+    <ol>
+      <li><b>Capability bar.</b> Xing's SIT anchors to GPT-4-Turbo (Jan 2024), which every model now clears. This sample uses Artificial Analysis Intelligence Index v5: SITB anchored at 30, SITF at 55.</li>
+      <li><b>Price per SIT.</b> Blended list price × (anchor ÷ model score)<sup>α</sup>; α = 1 is the paper's rule.</li>
+      <li><b>Weights.</b> OpenRouter request share by lab, each lab capped at 30%. Updated by hand monthly.</li>
+      <li><b>Prices.</b> OpenRouter list prices, refreshed every morning at 06:00 UTC.</li>
+      <li><b>Throughput.</b> SemiAnalysis InferenceX at the chosen speed class, interpolated between measured points.</li>
+      <li><b>Comparisons.</b> Ornn and Silicon Data values are entered by hand from their public pages and stored with each fixing, so the comparison builds up over time.</li>
+      <li><b>Crunch.</b> List prices and on-demand rents, so it describes the marginal renter, not a large operator with owned hardware and negotiated prices.</li>
+    </ol>
+    <h3 style="margin-top:6px">Cross-check against Gavin Baker</h3>
+    <div class="tw"><table class="d" id="intTable" style="min-width:420px"></table></div>
+  </div>
+  <div style="display:grid;gap:10px;align-content:start">
+    <div class="formula">P_SIT     = P_blended × (S_anchor / S_model)^α
+Index     = Σ w · P_SIT            (w_lab ≤ cap)
+HeatRate  = tok/s per GPU × 3600 / 1e6
+Revenue   = P × HeatRate × utilisation   ($/GPU-hr)
+Crunch    = Revenue − Rent
+Owner     = Rent − Capex/(life·8760·occ) − Opex</div>
+    <h3>Sources</h3>
     <ul>
-      <li>Scenario paths use Xing's mean-reverting jump-diffusion model, 2,000 simulations from the latest fixing. They are illustrations, not forecasts.</li>
-      <li>No provider publishes a capability-adjusted price history, so this record starts at the first fixing and grows by one point a day. Prices come from OpenRouter, which publishes current prices only.</li>
-      <li>Raw data: <a href="/api/fixings">/api/fixings</a> (all fixings) and <code>/api/fixings?date=YYYY-MM-DD</code> (one fixing with every constituent).</li>
-      <li>Sources: <a href="https://arxiv.org/html/2603.21690" target="_blank" rel="noopener">Xing (2026)</a>, <a href="https://modelcap.ai/benchmarks/aa-intelligence-index" target="_blank" rel="noopener">AA Intelligence Index</a>, <a href="https://openrouter.ai/models" target="_blank" rel="noopener">OpenRouter prices</a>, <a href="https://openrouter.ai/rankings" target="_blank" rel="noopener">OpenRouter rankings</a>.</li>
+      <li>Xing, <a href="https://arxiv.org/html/2603.21690" target="_blank" rel="noopener">AI Token Futures Market</a>, Mar 2026</li>
+      <li><a href="https://data.ornn.com/" target="_blank" rel="noopener">Ornn OCPI and OTPI</a>, 1–2 Nov 2026</li>
+      <li><a href="https://www.silicondata.com/products/silicon-index/llm-token-expenditure-index" target="_blank" rel="noopener">Silicon Data SDLLMTK and GPU indices</a>, 1 Nov 2026</li>
+      <li><a href="https://inferencex.semianalysis.com/rankings/fastest-gpu-for-kimi-k3" target="_blank" rel="noopener">SemiAnalysis InferenceX</a>, Oct 2026</li>
+      <li><a href="https://x.com/drwconvexity/status/2113735972751843387" target="_blank" rel="noopener">Don Wilson</a> and Gavin Baker on X</li>
+      <li><a href="https://modelcap.ai/benchmarks/aa-intelligence-index" target="_blank" rel="noopener">AA Intelligence Index v5</a>; <a href="https://www.morphllm.com/llm-api" target="_blank" rel="noopener">list prices</a>; <a href="https://openrouter.ai/rankings?duration=month" target="_blank" rel="noopener">OpenRouter rankings</a></li>
     </ul>
   </div>
 </section>
+
+<footer>A working index for discussion, not a tradeable reference rate. List prices exclude caching, batch and negotiated discounts. Several input prices are estimated. Ownership costs are assumptions. Not investment advice.</footer>
 </div>
 
 <script>
 (function(){
+let MODELS=[],SHARE_K={},OTHER=1.64,GPU={ornn:{},sd:{}},OPEX={H100:0.45,B200:0.80},CURVES={},REFS=null,HIST=[],LATEST=null,TOP=0;
+const LAB_ALIASES={alibaba:"qwen",alibabacloud:"qwen",moonshotai:"moonshot",zhipu:"zai",zhipuai:"zai",metaai:"meta",googledeepmind:"google",mistralai:"mistral"};
+const labKey=n=>{const k=String(n||"").toLowerCase().replace(/[^a-z0-9]/g,"");return LAB_ALIASES[k]||k;};
+const shareOf=lab=>SHARE_K[labKey(lab)]??OTHER;
+const ANCHOR={B:30,F:55};
+const BASE={f:30,floor:25,fcut:45,mix:3,alpha:1,wt:"vol",cap:30,thr:"meas",tpsB:8000,tpsF:1500,util:60,capH:25000,capB:45000,life:4,occ:80};
+const PRESETS={agent:{...BASE},xing:{...BASE,mix:0},equal:{...BASE,wt:"eq"}};
+const DEF={...BASE,src:"ornn",preset:"agent",lp:-30,tg:37,rg:0,speed:50,tier:"F",vol:1000,model:"Claude Opus 5.5",hTier:"sitf",hSc:"base",hH:36,hCmp:"none"};
+let st={...DEF};
 const $=id=>document.getElementById(id);
-const TIERS={sitb:{name:"SITB",col:"--sitb"},sitf:{name:"SITF",col:"--sitf"},sitc:{name:"SITC",col:"--sitc"}};
-const SC={
-  base:{name:"Baseline",col:"--sitc",beta:-0.35,lam:3,mu:0.10,txt:"Baseline: Xing's calibration. Prices revert towards a trend falling about 30% a year, with 40% volatility and three upward demand shocks a year."},
-  defl:{name:"Fast deflation",col:"--down",beta:-1.2,lam:2,mu:0.05,txt:"Fast deflation: prices for a fixed capability keep falling at the 2023–26 pace, about 70% a year."},
-  scar:{name:"Scarcity",col:"--up",beta:0.15,lam:5,mu:0.25,txt:"Scarcity: power, chips and data centres fall behind agent demand. A gently rising trend with five large upward shocks a year."}};
-let st={tier:"sitf",sc:"base",h:36};
-let rows=[];
-const money=v=>!isFinite(v)?"–":"$"+(v>=100?v.toFixed(0):v>=10?v.toFixed(1):v>=1?v.toFixed(2):v.toFixed(3));
-const pct=v=>(v>=0?"+":"−")+Math.abs(v*100).toFixed(1)+"%";
-const fmtDate=s=>new Date(s+"T00:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"});
+const f$=v=>{if(!isFinite(v))return"–";const a=Math.abs(v),s=v<0?"−$":"$";return s+(a>=1e6?(a/1e6).toFixed(2)+"M":a>=1e4?(a/1e3).toFixed(0)+"k":a>=1000?Math.round(a).toLocaleString("en-GB"):a>=100?a.toFixed(0):a>=10?a.toFixed(1):a>=1?a.toFixed(2):a.toFixed(3));};
+const sg=v=>!isFinite(v)?"–":(v>=0?"+":"")+f$(v);
+const fx=v=>!isFinite(v)?"–":(v>=10?v.toFixed(0):v.toFixed(1))+"×";
+const tok=v=>!isFinite(v)?"–":Math.round(v).toLocaleString();
+function interp(pts,s){if(s<=pts[0][0])return{v:pts[0][1],clamped:s<pts[0][0]};const L=pts[pts.length-1];if(s>=L[0])return{v:L[1],clamped:s>L[0]};
+  for(let i=0;i<pts.length-1;i++){const[a,va]=pts[i],[b,vb]=pts[i+1];if(s>=a&&s<=b)return{v:Math.round(va*Math.pow(vb/va,(s-a)/(b-a))),clamped:false};}}
+const TF=()=>st.thr==="meas"&&CURVES.k3b200?interp(CURVES.k3b200.pts,st.speed).v:st.tpsF;
+const TB=()=>st.thr==="meas"&&CURVES.gptH100?interp(CURVES.gptH100.pts,st.speed).v:st.tpsB;
 
-function press(id,v){document.querySelectorAll("#"+id+" button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===String(v))));}
-[["optTier","tier"],["optSc","sc"],["optH","h"]].forEach(([id,k])=>document.querySelectorAll("#"+id+" button").forEach(b=>b.addEventListener("click",()=>{st[k]=k==="h"?+b.dataset.v:b.dataset.v;press(id,st[k]);draw();})));
+function tier(lo,hi,anchor){
+  const ms=MODELS.filter(m=>m[2]>=lo&&m[2]<hi);const provs={};ms.forEach(m=>(provs[m[1]]=provs[m[1]]||[]).push(m));
+  const ps=Object.keys(provs);if(!ps.length)return{idx:NaN,rows:[],ctd:null,max:null};
+  const w={};ps.forEach(p=>w[p]=st.wt==="vol"?shareOf(p):1);const tot=ps.reduce((a,p)=>a+w[p],0);ps.forEach(p=>w[p]/=tot);
+  const cap=Math.max(st.cap/100,1/ps.length);
+  for(let k=0;k<30;k++){const over=ps.filter(p=>w[p]>cap+1e-12);if(!over.length)break;let ex=0;over.forEach(p=>{ex+=w[p]-cap;w[p]=cap});
+    const under=ps.filter(p=>w[p]<cap-1e-12);const s=under.reduce((a,p)=>a+w[p],0);if(!s)break;under.forEach(p=>w[p]+=ex*w[p]/s);}
+  const rows=[];let idx=0;
+  ps.forEach(p=>provs[p].forEach(m=>{const raw=(st.mix*m[3]+m[4])/(st.mix+1),ratio=Math.pow(anchor/m[2],st.alpha),adj=raw*ratio,wi=w[p]/provs[p].length;
+    idx+=wi*adj;rows.push({m,raw,adj,wi,native:ratio});}));
+  rows.sort((a,b)=>b.m[2]-a.m[2]);
+  return{idx,rows,ctd:rows.reduce((a,r)=>r.adj<a.adj?r:a,rows[0]),max:rows.reduce((a,r)=>r.adj>a.adj?r:a,rows[0])};
+}
+const rent=g=>GPU[st.src][g];
+const ownCost=g=>(g==="H100"?st.capH:st.capB)/(st.life*8760*(st.occ/100))+OPEX[g];
+const rev=(p,tps,u)=>p*tps*3600*((u??st.util)/100)/1e6;
+let R;
+function lanes(){const{B,F}=R;return[
+  {k:"SITB · index",g:"H100",p:B.idx,t:TB()},{k:"SITB · cheapest",g:"H100",p:B.ctd.adj,t:TB()},
+  {k:"SITF · index",g:"B200",p:F.idx,t:TF()},{k:"SITF · cheapest",g:"B200",p:F.ctd.adj,t:TF()}];}
+function press(id,val){document.querySelectorAll("#"+id+" button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v)===String(val)));}
 
-function tiles(){
-  if(!rows.length){["vB","vF","vC"].forEach(i=>$(i).textContent="–");$("latestDate").textContent="none yet";return;}
-  const L=rows[rows.length-1],P=rows.length>1?rows[rows.length-2]:null;
-  $("latestDate").textContent=fmtDate(L.date);
-  [["B","sitb","ctdB","ctdBModel"],["F","sitf","ctdF","ctdFModel"],["C","sitc"]].forEach(([k,f,c,cm])=>{
-    $("v"+k).textContent=money(L[f]);
-    const el=$("c"+k);
-    if(P&&isFinite(P[f])){const d=L[f]/P[f]-1;el.textContent=`${pct(d)} vs ${fmtDate(P.date)}`;el.className="chg "+(Math.abs(d)<0.0005?"flat":d>0?"up":"down");}
-    else{el.textContent="First fixing";el.className="chg flat";}
-    $("m"+k).textContent=c?`Cheapest: ${money(L[c])}${L[cm]?" · "+L[cm]:""}`:`${L.nB??"–"} SITB and ${L.nF??"–"} SITF models`;
-  });
-}
-function log(){
-  const tb=$("log");tb.replaceChildren();
-  if(!rows.length){const tr=document.createElement("tr");const td=document.createElement("td");td.colSpan=7;td.className="empty";td.textContent="No fixings recorded yet. The first one appears here as soon as it is written.";tr.appendChild(td);tb.appendChild(tr);return;}
-  [...rows].reverse().forEach(r=>{const tr=document.createElement("tr");
-    [fmtDate(r.date),money(r.sitb),money(r.sitf),money(r.sitc),money(r.ctdB),money(r.ctdF),r.note||""].forEach(v=>{const td=document.createElement("td");td.textContent=v;tr.appendChild(td);});
-    tb.appendChild(tr);});
+function render(){
+  const B=tier(st.floor,st.fcut,ANCHOR.B),F=tier(st.fcut,999,ANCHOR.F);R={B,F};
+  press("optA",st.alpha);press("optMix",st.mix);press("optW",st.wt);press("optCap",st.cap);press("optSrc",st.src);press("optThr",st.thr);press("optLife",st.life);
+  press("optLp",st.lp);press("optTg",st.tg);press("optRg",st.rg);press("optSpd",st.speed);press("cTier",st.tier);press("cVol",st.vol);
+  document.querySelectorAll("#presets button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.p===st.preset));
+  ["floor","fcut","tpsB","tpsF","util","capH","capB","occ"].forEach(k=>$(k).value=st[k]);
+  $("tpsB").disabled=$("tpsF").disabled=st.thr==="meas";
+  assumptionsText();
+  if(!B.ctd||!F.ctd){$("findings").innerHTML='<li><span class="n">–</span><span class="t">One tier has no qualifying models. Widen the capability ranges under Assumptions.</span></li>';return;}
+  fixings();tape();findings();compare();builder();strip();table();stack();sens();fwd();thr();spec();intensity();histDraw();record();
 }
 
-function rng(seed){let s=seed>>>0;return()=>{s+=0x6D2B79F5;let t=s;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296}}
-const cache={};
-function simulate(P0,p,months,key){
-  if(cache[key])return cache[key];
-  const R=rng(20261103),N=2000,dt=1/48,steps=months*4,k=2.5,sig=.4,sJ=.25,g=.08,th0=Math.log(P0);
-  const gauss=()=>{let u=0,v=0;while(!u)u=R();while(!v)v=R();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)};
-  const P=[];for(let m=0;m<=months;m++)P.push(new Float64Array(N));
-  for(let n=0;n<N;n++){let X=th0;P[0][n]=P0;for(let s=1;s<=steps;s++){const t=s*dt;X+=k*(th0+p.beta*t+g*Math.sin(2*Math.PI*t)-X)*dt+sig*Math.sqrt(dt)*gauss();if(R()<p.lam*dt)X+=p.mu+sJ*gauss();if(s%4===0)P[s/4][n]=Math.exp(X);}}
-  const q=(a,f)=>{const s=Array.from(a).sort((x,y)=>x-y);return s[Math.floor(f*(s.length-1))]};
-  return cache[key]=P.map(a=>({p10:q(a,.1),p25:q(a,.25),p50:q(a,.5),p75:q(a,.75),p90:q(a,.9)}));
+function assumptionsText(){
+  const{B,F}=R;
+  $("vFloor").textContent="score ≥ "+st.floor;$("vFcut").textContent="score ≥ "+st.fcut;
+  $("hFloor").textContent=`Scores ${st.floor}–${st.fcut-1}: ${B.rows.length} models, each priced as if it scored 30.`;
+  $("hFcut").textContent=`Score ${st.fcut} and above: ${F.rows.length} models, each priced as if it scored 55. The top score in this fixing is ${TOP}.`;
+  $("hA").textContent=st.alpha===0?"None: a weaker model's token counts as a full SIT, so the index just rewards cheapness.":st.alpha===1?"The paper's rule: a model scoring half the anchor needs two of its tokens per SIT.":"A model scoring half the anchor needs four of its tokens per SIT.";
+  $("hMix").textContent=st.mix===0?"Output tokens only, as the paper does. Overstates agent costs, because agents mostly read.":`${st.mix} input tokens per output token. ${st.mix===3?"A common agent profile, and Artificial Analysis's blend.":st.mix===10?"Agents re-reading large files and tool results.":"Closer to chat."}`;
+  $("hW").textContent=st.wt==="vol"?`OpenRouter request share, which leans to cheap open models. ${st.cap<100?"No lab above "+st.cap+"% of a tier.":"No cap."}`:"Every qualifying lab counts the same.";
+  $("vTpsB").textContent="SITB "+TB().toLocaleString()+" tok/s";$("vTpsF").textContent="SITF "+TF().toLocaleString()+" tok/s";$("vUtil").textContent=st.util+"%";
+  $("hThr").textContent=st.thr==="meas"?`Measured at ${st.speed} tok/s per user: gpt-oss-120b on an H100 for SITB${CURVES.gptH100&&interp(CURVES.gptH100.pts,st.speed).clamped?" (nearest point, 90 tok/s per user)":""}, Kimi K3 on a B200 for SITF. Change the speed class in the throughput section.`:"Set by hand with the sliders above.";
+  const gp=(GPU.ornn.B200/GPU.sd.B200-1)*100;
+  $("rentGap").textContent=isFinite(gp)?`The two disagree by ${Math.abs(gp).toFixed(0)}% on a B200. Switching shows how much the crunch depends on which index you trust.`:"";
+  $("vCapH").textContent="H100 $"+(st.capH/1000)+"k";$("vCapB").textContent="B200 $"+(st.capB/1000)+"k";$("vOcc").textContent=st.occ+"%";
+  $("hOwn").textContent=`Owning costs about ${f$(ownCost("H100"))} per rented hour for an H100 and ${f$(ownCost("B200"))} for a B200, including running costs.`;
+  $("asum").innerHTML=`<span>${st.mix?st.mix+":1 agent workload":"output only"}</span><span>tiers ≥${st.floor} / ≥${st.fcut}</span><span>${st.wt==="vol"?"usage-weighted":"equal-weighted"}</span><span>rent: ${st.src==="ornn"?"Ornn":"Silicon Data"}</span><span>throughput: ${st.thr==="meas"?"measured @"+st.speed+" tok/s/user":"by hand"}</span><span>${st.util}% utilised</span><a href="#assumptions">Change assumptions</a>`;
 }
+
+function fixings(){
+  const{B,F}=R;const hr=TF()*3600/1e6,kF=rev(F.idx,TF())-rent("B200");
+  const off=(v,o)=>LATEST&&isFinite(o)&&Math.abs(v/o-1)>0.0005?`<br><span class="official">Official fixing ${f$(o)} · this view uses your assumptions</span>`:"";
+  const chg=(k)=>{const p=HIST.length>1?HIST[HIST.length-2]:null;if(!p||!LATEST)return"";const d=LATEST[k]/p[k]-1;return ` · <span style="color:var(${d>0?"--down":"--up"})">${d>=0?"+":"−"}${Math.abs(d*100).toFixed(1)}%</span> vs ${fmtDate(p.date)}`;};
+  $("vB").textContent=f$(B.idx);$("mB").innerHTML=`Cheapest: <b>${f$(B.ctd.adj)}</b> ${B.ctd.m[0]}${chg("sitb")}${off(B.idx,LATEST?.sitb)}`;
+  $("vF").textContent=f$(F.idx);$("mF").innerHTML=`Cheapest: <b>${f$(F.ctd.adj)}</b> ${F.ctd.m[0]}${chg("sitf")}${off(F.idx,LATEST?.sitf)}`;
+  $("vT").textContent=hr.toFixed(1)+"M";$("mT").innerHTML=`${TF().toLocaleString()} tok/s · ${st.thr==="meas"?"Kimi K3 @"+st.speed+" tok/s/user":"set by hand"}`;
+  $("vK").textContent=sg(kF);$("mK").innerHTML=`At cheapest price: <b>${sg(rev(F.ctd.adj,TF())-rent("B200"))}</b>`;
+}
+function tape(){
+  const{B,F}=R;const t=(k,v,c)=>`<span class="t"><span class="k">${k}</span><span>${v}</span>${c!=null?`<span style="color:var(${c>=0?"--up":"--down"})">${c>=0?"+":""}${c.toFixed(1)}%</span>`:""}</span>`;
+  $("tape").innerHTML=t("SITB",f$(B.idx))+t("SITF",f$(F.idx))+t("STI-F",(TF()*3600/1e6).toFixed(1)+"M/hr")+t("CRUNCH-F",sg(rev(F.idx,TF())-rent("B200"))+"/hr")+refTape(t);
+}
+
+function findings(){
+  const{B,F}=R;const L=[];
+  const save=1-B.ctd.adj/B.idx;
+  L.push([`Same capability, wide price range. In the fixed-capability tier the dearest model costs <b>${fx(B.max.adj/B.ctd.adj)}</b> the cheapest per SIT; in the frontier tier, <b>${fx(F.max.adj/F.ctd.adj)}</b>.`,`<b>Builders:</b> buying at the cheapest qualifying model instead of the index would cut a SITB bill by about ${(save*100).toFixed(0)}%. Anything paid above that buys brand, reliability or data terms, not capability.`,"#builders","Price your work"]);
+  const kBc=rev(B.ctd.adj,TB())-rent("H100"),kBi=rev(B.idx,TB())-rent("H100");
+  L.push([`The squeeze is at the bottom. Selling fixed-capability tokens on a rented H100 makes <b>${sg(kBi)}</b> an hour at the index price but <b>${sg(kBc)}</b> at the cheapest price.`,`<b>Operators and lenders:</b> margin risk sits with commodity open-weight hosts, not with the market as a whole.`,"#crunch","See the spread"]);
+  const own=rent("B200")-ownCost("B200");
+  L.push([`Owning GPUs is the stronger leg. A B200 rented out earns about <b>${sg(own)}</b> an hour over its cost of ownership at ${st.src==="ornn"?"Ornn's":"Silicon Data's"} rent, as Wilson argued.`,`<b>Lenders:</b> the two rent indices disagree by ${Math.abs((GPU.ornn.B200/GPU.sd.B200-1)*100).toFixed(0)}% on a B200, so name the index in any covenant.`,"#crunch","Owner vs producer"]);
+  const g=((1+st.lp/100)*(1+st.tg/100)-1)*100,be=(1-1/(1+st.tg/100))*100;
+  L.push([`Price × volume. With same-model throughput up <b>${st.tg}%</b> a year, like-for-like prices can fall <b>${be.toFixed(0)}%</b> a year before a GPU earns less. At ${st.lp}% the net change is <b>${g>=0?"+":""}${g.toFixed(0)}%</b> a year.`,`<b>Everyone:</b> a usage-weighted token index can't show this, because it mixes price cuts with buyers switching models.`,"#crunch","Forward view"]);
+  const shF=10*(rent("B200")/(TF()*3600*st.util/100)*1e6)/F.idx;
+  L.push([`At measured throughput, compute is about <b>$${shF.toFixed(2)}</b> of every $10 of frontier revenue, close to Baker's $1 for Claude. Frontier prices are mostly margin.`,`<b>Speculators:</b> SITF moves with lab pricing power more than with hardware cost, so it need not track GPU rents.`,"#thr","Throughput data"]);
+  $("findings").innerHTML=L.map(([t,a,href,lbl],i)=>`<li><span class="n">${String(i+1).padStart(2,"0")}</span><span class="t">${t}</span><a class="to" href="${href}">${lbl} →</a><span class="act">${a}</span></li>`).join("");
+}
+
+function builder(){
+  const T=st.tier==="F"?R.F:R.B;const sel=$("cModel");
+  if(!T.rows.some(r=>r.m[0]===st.model))st.model=T.rows.reduce((a,r)=>r.wi>a.wi?r:a,T.rows[0]).m[0];
+  sel.innerHTML=T.rows.map(r=>`<option${r.m[0]===st.model?" selected":""}>${r.m[0]}</option>`).join("");
+  const r=T.rows.find(x=>x.m[0]===st.model);
+  const vol=st.vol,sit=vol/r.native,cY=vol*r.raw,cI=sit*T.idx,cC=sit*T.ctd.adj;
+  const vs=v=>v>=1000?(v/1000).toFixed(v>=10000?0:1)+"B":v.toFixed(0)+"M";
+  $("kY").textContent=f$(cY)+"/mo";$("kYu").textContent=`${vs(vol)} tokens of ${r.m[0]} at ${f$(r.raw)}/M blended`;
+  $("kI").textContent=f$(cI)+"/mo";$("kIu").textContent=`${vs(sit)} SIT${st.tier} at ${f$(T.idx)} per M`;
+  $("kC").textContent=f$(cC)+"/mo";$("kCu").textContent=`${T.ctd.m[0]} delivering the same SIT`;
+  const prem=cY/cC,vsI=cY/cI-1;
+  $("kV").innerHTML=`One SIT${st.tier} equals <b>${r.native.toFixed(2)}</b> ${r.m[0]} tokens. You pay <b>${fx(prem)}</b> the cheapest qualifying model and <b>${vsI>=0?"+":""}${(vsI*100).toFixed(0)}%</b> against the index. ${prem>1.5?`If this workload doesn't need what the premium buys, switching would save about <b>${f$(cY-cC)}</b> a month.`:"You are already close to the cheapest way to buy this capability."}`;
+}
+
 const NS="http://www.w3.org/2000/svg";
 function el(t,a,p){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e}
 function txt(svg,x,y,s,anchor,fill){const t=el("text",{x,y,"text-anchor":anchor||"start"},svg);if(fill)t.style.fill=fill;t.textContent=s;return t}
-const addM=(d,m)=>{const x=new Date(d);x.setUTCMonth(x.getUTCMonth()+m);return x;};
+function tipFor(box){let t=box.querySelector(".tip");if(!t){t=document.createElement("div");t.className="tip";box.appendChild(t)}return t}
+function showTip(tip,box,svg,W,cx,cy,html){const sb=svg.getBoundingClientRect(),bb=box.getBoundingClientRect(),s=sb.width/W;tip.innerHTML=html;tip.style.left=(sb.left-bb.left+cx*s)+"px";tip.style.top=(sb.top-bb.top+cy*s)+"px";tip.classList.add("on");}
+function hov(e,tip,box,svg,W,cx,cy,html){e.addEventListener("pointerenter",()=>showTip(tip,box,svg,W,cx,cy,html));e.addEventListener("pointerleave",()=>tip.classList.remove("on"));}
 
-function draw(){
-  tiles();log();
-  const box=$("chart");box.replaceChildren();
-  const T=TIERS[st.tier];$("scText").textContent=SC[st.sc].txt;
-  $("legend").innerHTML="";
-  const lg=[[`<span class="sw" style="color:var(${T.col})"></span>${T.name} fixings`],...Object.entries(SC).map(([k,s])=>[`<span class="sw dash" style="color:var(${s.col})"></span>${s.name} median`])];
-  lg.forEach(([h])=>{const s=document.createElement("span");s.innerHTML=h;$("legend").appendChild(s);});
-  if(!rows.length){const d=document.createElement("div");d.className="empty";d.textContent="The chart draws once the first fixing is recorded.";box.appendChild(d);return;}
-  const hist=rows.map(r=>({d:new Date(r.date+"T00:00:00Z"),v:r[st.tier]})).filter(r=>isFinite(r.v));
+function strip(){
+  const{B,F}=R;const box=$("strip");box.innerHTML="";
+  const W=860,padL=60,padR=24,rowH=78,top=10,H=top+rowH*2+46;
+  const svg=el("svg",{viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":"Price per SIT for each qualifying model"},box);
+  const lo=0.05,hi=Math.max(40,...[...B.rows,...F.rows].map(r=>r.adj))*1.2;
+  const x=v=>padL+(Math.log10(v)-Math.log10(lo))/(Math.log10(hi)-Math.log10(lo))*(W-padL-padR);
+  [0.1,0.3,1,3,10,30,100].filter(v=>v<hi).forEach(v=>{el("line",{x1:x(v),x2:x(v),y1:top,y2:top+rowH*2,stroke:"var(--grid)"},svg);txt(svg,x(v),top+rowH*2+18,"$"+v,"middle");});
+  const tip=tipFor(box);
+  [["SITF",F,"--sitf",0],["SITB",B,"--sitb",1]].forEach(([lab,T,col,i])=>{
+    const cy=top+rowH*i+rowH/2;txt(svg,0,cy+4,lab,"start","var(--fg)");el("line",{x1:padL,x2:W-padR,y1:cy,y2:cy,stroke:"var(--rule)"},svg);
+    [...T.rows].sort((a,b)=>a.adj-b.adj).forEach((p,k)=>{const cx=x(p.adj),cyy=cy+((k%3)-1)*14,r=3.5+Math.sqrt(p.wi)*10,me=p.m[0]===st.model;
+      el("circle",{cx,cy:cyy,r,fill:`var(${col})`,"fill-opacity":.85,stroke:me?"var(--fg)":"var(--bg)","stroke-width":me?2.5:2},svg);
+      hov(el("circle",{cx,cy:cyy,r:Math.max(r+5,11),fill:"transparent"},svg),tip,box,svg,W,cx,cyy-r,`${p.m[0]} · ${f$(p.adj)}/M SIT · weight ${(p.wi*100).toFixed(1)}%`);});
+    el("line",{x1:x(T.idx),x2:x(T.idx),y1:cy-rowH/2+6,y2:cy+rowH/2-6,stroke:"var(--fg)","stroke-width":2},svg);
+    el("line",{x1:x(T.ctd.adj),x2:x(T.ctd.adj),y1:cy-rowH/2+6,y2:cy+rowH/2-6,stroke:"var(--fg)","stroke-width":1.5,"stroke-dasharray":"3 3"},svg);
+    txt(svg,x(T.idx)+5,cy-rowH/2+16,f$(T.idx),"start","var(--fg)");});
+  txt(svg,padL,H-2,"USD per 1M SIT (log)","start");
+}
+function table(){
+  const{B,F}=R;let h="";
+  const sec=(label,T)=>{h+=`<tr class="tr"><td colspan="9">${label} · index ${f$(T.idx)}</td></tr>`;
+    T.rows.forEach(x=>{const m=x.m;h+=`<tr><td class="nm">${m[0]}${T.ctd===x?'<span class="tag">CHEAPEST</span>':''}</td><td class="l" style="font-family:var(--sans)">${m[1]}</td><td>${m[2].toFixed(1)}</td><td>${m[3].toFixed(2)}${m[5]?' <span class="est">e</span>':''}</td><td>${m[4].toFixed(2)}</td><td>${x.raw.toFixed(3)}</td><td>${x.native.toFixed(2)}</td><td>${x.adj.toFixed(3)}</td><td>${(x.wi*100).toFixed(1)}%</td></tr>`;});};
+  sec("SITF frontier",F);sec("SITB fixed capability",B);
+  const out=MODELS.filter(m=>m[2]<st.floor);
+  if(out.length){h+=`<tr class="tr"><td colspan="9">Below the capability bar</td></tr>`;out.forEach(m=>h+=`<tr class="x"><td class="nm">${m[0]}</td><td class="l" style="font-family:var(--sans)">${m[1]}</td><td>${m[2].toFixed(1)}</td><td>${m[3].toFixed(2)}</td><td>${m[4].toFixed(2)}</td><td colspan="4" class="l">Excluded</td></tr>`);}
+  $("tbody").innerHTML=h;
+}
+
+function stack(){
+  const box=$("stack");box.innerHTML="";
+  const data=lanes().map(l=>({...l,own:ownCost(l.g),rent:rent(l.g),rev:rev(l.p,l.t)}));
+  const W=860,padL=150,padR=96,rowH=46,top=6,H=top+rowH*data.length+44;
+  const svg=el("svg",{viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":"Owner and producer margin per GPU-hour"},box);
+  const max=Math.max(...data.map(d=>Math.max(d.rev,d.rent)))*1.05;
+  const x=v=>padL+v/max*(W-padL-padR);
+  const step=max>200?50:max>80?20:max>40?10:max>16?4:2;
+  for(let v=0;v<=max;v+=step){el("line",{x1:x(v),x2:x(v),y1:top,y2:top+rowH*data.length,stroke:"var(--grid)"},svg);txt(svg,x(v),top+rowH*data.length+18,"$"+v,"middle");}
+  const tip=tipFor(box);
+  data.forEach((d,i)=>{
+    const y=top+i*rowH+12,h=20,cy=y+h/2;
+    txt(svg,0,cy+4,`${d.k} · ${d.g}`,"start","var(--fg)");
+    const o=Math.min(d.own,d.rent);
+    hov(el("rect",{x:x(0),y,width:x(o)-x(0),height:h,fill:"var(--own)"},svg),tip,box,svg,W,x(o/2),y,`Owner's cost ${f$(d.own)}/hr`);
+    if(d.rent>d.own)hov(el("rect",{x:x(d.own)+1,y,width:Math.max(0,x(d.rent)-x(d.own)-1),height:h,fill:"var(--gpu)"},svg),tip,box,svg,W,x((d.own+d.rent)/2),y,`Owner margin ${f$(d.rent-d.own)}/hr on rent of ${f$(d.rent)}`);
+    if(d.rev>=d.rent)hov(el("rect",{x:x(d.rent)+1,y,width:Math.max(0,x(d.rev)-x(d.rent)-1),height:h,fill:"var(--up)","fill-opacity":.75},svg),tip,box,svg,W,x((d.rent+d.rev)/2),y,`Producer margin ${f$(d.rev-d.rent)}/hr; revenue ${f$(d.rev)}`);
+    else hov(el("rect",{x:x(d.rev),y:y+1,width:x(d.rent)-x(d.rev),height:h-2,fill:"var(--badbg)",stroke:"var(--down)","stroke-dasharray":"4 3","stroke-width":1.5},svg),tip,box,svg,W,x((d.rent+d.rev)/2),y,`Producer loss ${f$(d.rev-d.rent)}/hr; revenue ${f$(d.rev)}`);
+    const t=txt(svg,x(Math.max(d.rev,d.rent))+6,cy+4,`crunch ${sg(d.rev-d.rent)}`,"start");t.style.fill=d.rev>=d.rent?"var(--up)":"var(--down)";
+  });
+  txt(svg,padL,H-2,"USD per GPU-hour","start");
+}
+
+function sens(){
+  const L=lanes();const base=L.map(l=>rev(l.p,l.t)-rent(l.g));
+  const alt=st.src==="ornn"?"sd":"ornn";
+  const rows=[
+    ["Token price +10%",L.map(l=>0.1*rev(l.p,l.t))],
+    ["Throughput +10%",L.map(l=>0.1*rev(l.p,l.t))],
+    ["Utilisation +10 points",L.map(l=>rev(l.p,l.t,st.util+10)-rev(l.p,l.t))],
+    ["GPU rent +10%",L.map(l=>-0.1*rent(l.g))],
+    [`Price rent off ${alt==="sd"?"Silicon Data":"Ornn"} instead`,L.map(l=>rent(l.g)-GPU[alt][l.g])]];
+  let h=`<thead><tr><th>Move</th>${L.map(l=>`<th>${l.k} · ${l.g}</th>`).join("")}</tr></thead><tbody>`;
+  h+=`<tr class="base"><td class="nm">Crunch today</td>${base.map(v=>`<td class="${v>=0?"pos":"neg"}">${sg(v)}</td>`).join("")}</tr>`;
+  rows.forEach(([n,vs])=>h+=`<tr><td class="nm">${n}</td>${vs.map(v=>`<td class="${v>=0?"pos":"neg"}">${sg(v)}</td>`).join("")}</tr>`);
+  h+=`<tr class="tr"><td colspan="5">Break-even</td></tr>`;
+  h+=`<tr><td class="nm">Throughput needed</td>${L.map(l=>`<td>${tok(rent(l.g)/(l.p*3600*st.util/100)*1e6)} tok/s</td>`).join("")}</tr>`;
+  h+=`<tr><td class="nm">Lowest token price that covers rent</td>${L.map(l=>`<td>${f$(rent(l.g)/(l.t*3600*st.util/100)*1e6)}/M</td>`).join("")}</tr>`;
+  $("sens").innerHTML=h+"</tbody>";
+}
+
+function fwd(){
+  const L=lanes();const k=(1+st.lp/100)*(1+st.tg/100),r=1+st.rg/100;
+  let h=`<thead><tr><th>Crunch, $ per GPU-hour</th>${L.map(l=>`<th>${l.k} · ${l.g}</th>`).join("")}</tr></thead><tbody>`;
+  [0,1,2,3].forEach(y=>{h+=`<tr${y===0?' class="base"':""}><td class="nm">${y?"Year "+y:"Today"}</td>${L.map(l=>{const v=rev(l.p,l.t)*Math.pow(k,y)-rent(l.g)*Math.pow(r,y);return`<td class="${v>=0?"pos":"neg"}">${sg(v)}</td>`;}).join("")}</tr>`;});
+  $("fwd").innerHTML=h+"</tbody>";
+  const g=(k-1)*100,be=(1-1/(1+st.tg/100))*100;
+  const c=L[1],v3=rev(c.p,c.t)*Math.pow(k,3)-rent(c.g)*Math.pow(r,3),v0=rev(c.p,c.t)-rent(c.g);
+  $("fwdV").innerHTML=`Revenue per GPU-hour changes <b>${g>=0?"+":""}${g.toFixed(0)}%</b> a year (price ${st.lp}%, throughput +${st.tg}%). Prices can fall up to <b>${be.toFixed(0)}%</b> a year before revenue per GPU declines. The cheapest-price SITB lane ${v0<0&&v3>=0?"turns profitable":v0<0?"stays under water":v3<0?"slips into loss":"stays profitable"} over three years (${sg(v0)} → ${sg(v3)} an hour).`;
+}
+
+function thr(){
+  const box=$("curve");box.innerHTML="";const W=860,H=240,padL=60,padR=96,padT=14,padB=32;
+  const svg=el("svg",{viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":"Throughput per GPU against per-user speed for Kimi K3"},box);
+  const xmax=210,ymax=12000;const x=s=>padL+s/xmax*(W-padL-padR),y=v=>padT+(1-v/ymax)*(H-padT-padB);
+  for(let v=0;v<=ymax;v+=3000){el("line",{x1:padL,x2:W-padR,y1:y(v),y2:y(v),stroke:"var(--grid)"},svg);txt(svg,padL-8,y(v)+4,v.toLocaleString(),"end");}
+  [0,50,100,150,200].forEach(s=>txt(svg,x(s),H-12,s+"","middle"));
+  txt(svg,W-padR,H-12,"tok/s per user","end");txt(svg,padL+4,padT+10,"tok/s per GPU","start");
+  const tip=tipFor(box);
+  [["k3b200","--sitf"],["k3gb200","--gpu"]].forEach(([k,col])=>{const c=CURVES[k];
+    el("path",{d:c.pts.map((p,i)=>`${i?"L":"M"}${x(p[0])},${y(p[1])}`).join(""),fill:"none",stroke:`var(${col})`,"stroke-width":2},svg);
+    c.pts.forEach(p=>{const cx=x(p[0]),cy=y(p[1]),sel=p[0]===st.speed;
+      el("circle",{cx,cy,r:sel?6:3.5,fill:`var(${col})`,stroke:"var(--bg)","stroke-width":2},svg);
+      const rn=c.gpu==="B200"?rent("B200"):NaN;
+      hov(el("circle",{cx,cy,r:12,fill:"transparent"},svg),tip,box,svg,W,cx,cy-6,`${c.name} on ${c.gpu} · ${p[0]} tok/s/user<br>${p[1].toLocaleString()} tok/s/GPU · owner cost ${f$(c.tco/(p[1]*3600)*1e6)}/M${isFinite(rn)?" · at rent "+f$(rn/(p[1]*3600)*1e6)+"/M":""}`);});
+    const last=c.pts[c.pts.length-1];txt(svg,x(last[0])+8,y(last[1])+4,c.gpu,"start","var(--fg)");});
+  let h=`<thead><tr><th>Model</th><th class="l">GPU</th><th class="l">Workload</th><th>tok/s per user</th><th>tok/s per GPU</th><th>M tok per GPU-hr</th><th>Owner $/M</th><th>Ornn rent $/M</th><th>SD rent $/M</th></tr></thead><tbody>`;
+  Object.values(CURVES).forEach(c=>{const r=interp(c.pts,st.speed),v=r.v,spd=r.clamped?(st.speed<c.pts[0][0]?c.pts[0][0]:c.pts[c.pts.length-1][0])+" (nearest)":st.speed;
+    const per=p=>p?f$(p/(v*3600)*1e6):"–";
+    h+=`<tr><td class="nm">${c.name}</td><td class="l">${c.gpu}</td><td class="l">${c.wl}</td><td>${spd}</td><td>${v.toLocaleString()}</td><td>${(v*3600/1e6).toFixed(1)}</td><td>${per(c.tco)}</td><td>${per(GPU.ornn[c.gpu])}</td><td>${per(GPU.sd[c.gpu])}</td></tr>`;});
+  $("thrTable").innerHTML=h+"</tbody>";
+}
+
+function spec(){
+  const{F,B}=R;const hrF=TF()*3600/1e6,hrB=TB()*3600/1e6;
+  const r=(k,v,n)=>`<tr><td class="nm" style="white-space:normal;width:20%">${k}</td><td class="l" style="white-space:normal;font-family:var(--sans)">${v}</td><td class="l" style="white-space:normal;color:var(--muted);font-family:var(--sans)">${n}</td></tr>`;
+  $("specTable").innerHTML=`<thead><tr><th>Term</th><th class="l">Specification</th><th class="l">Why</th></tr></thead><tbody>
+  ${r("Unit","1M SIT of one tier at one speed class, e.g. <b class='mono'>SITF-"+st.speed+"</b>","Capability and latency are what a buyer is choosing")}
+  ${r("Daily fixing",`SITB <b class='mono'>${f$(B.idx)}</b> · SITF <b class='mono'>${f$(F.idx)}</b> per 1M SIT`,"The one price both settlement routes reference")}
+  ${r("Heat rate",`1 B200-hour ≈ <b class='mono'>${hrF.toFixed(1)}M</b> SITF · 1 H100-hour ≈ <b class='mono'>${hrB.toFixed(1)}M</b> SITB`,"Converts GPU prices into token costs")}
+  ${r("Crunch spread",`SIT price × heat rate × utilisation − rent = <b class='mono'>${sg(rev(F.idx,TF())-rent("B200"))}</b> per B200-hour at index`,"The margin operators hedge and traders take views on")}
+  ${r("Builders take delivery","Prepaid SIT balance spent through a router at the fixing, filled by the cheapest model that clears the tier and speed class","One budget across labs; protection if prices rise")}
+  ${r("Traders settle in cash","Forwards on the fixing; crunch-spread swaps against Ornn or Silicon Data GPU rents","A view on AI pricing without owning hardware or a lab")}
+  ${r("Governance","Capability bar and anchors rebased yearly and chained; private benchmark component; lab weights capped at 30%","Stops the index drifting or being gamed")}
+  </tbody>`;
+}
+
+function intensity(){
+  const{B,F}=R;const c=(g,t)=>rent(g)/(t*3600*(st.util/100))*1e6;
+  const row=(n,v)=>`<tr><td class="nm">${n}</td><td>${v}</td></tr>`;
+  $("intTable").innerHTML=`<thead><tr><th>Compute cost per $10 of token revenue</th><th></th></tr></thead><tbody>
+  ${row("SITF at index, rented B200","$"+(10*c("B200",TF())/F.idx).toFixed(2))}${row("SITB at index, rented H100","$"+(10*c("H100",TB())/B.idx).toFixed(2))}
+  ${row("Baker: Claude","$1")}${row("Baker: open-weight via hosts","$3 – $7")}</tbody>`;
+}
+
+
+const fmtDate=s=>new Date(s+"T00:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"});
+const pctS=(v,dp=1)=>!isFinite(v)?"–":(v>=0?"+":"−")+Math.abs(v).toFixed(dp)+"%";
+
+function refTape(t){
+  const ti=REFS?.tokenIndices||{},gr=REFS?.gpuRent||{};let h="";
+  if(ti.SDLLMTK)h+=t("SDLLMTK",f$(ti.SDLLMTK.value),ti.SDLLMTK.change);
+  const labs=ti.OTPI?.labs||{};if(labs.Anthropic)h+=t("OTPI-ANTH",f$(labs.Anthropic.value),labs.Anthropic.change);if(labs.OpenAI)h+=t("OTPI-OAI",f$(labs.OpenAI.value),labs.OpenAI.change);
+  if(gr.ornn){h+=t("OCPI-H100",f$(gr.ornn.H100),gr.ornn.change1m?.H100);h+=t("OCPI-B200",f$(gr.ornn.B200),gr.ornn.change1m?.B200);}
+  if(gr.siliconData){h+=t("SD-H100",f$(gr.siliconData.H100));h+=t("SD-B200",f$(gr.siliconData.B200));}
+  return h;
+}
+// tape() expects a string concatenation; wrap
+function compare(){
+  const ti=REFS?.tokenIndices||{};const L=LATEST||{};
+  const prev=HIST.length>1?HIST[HIST.length-2]:null;
+  const sitChg=k=>prev?pctS((L[k]/prev[k]-1)*100)+" since "+fmtDate(prev.date):"First fixing";
+  const rows=[
+    ["SITB","SIT, fixed-capability tier",L.sitb,sitChg("sitb"),"Yes: priced as if every model scored 30","Same capability, any lab"],
+    ["SITF","SIT, frontier tier",L.sitf,sitChg("sitf"),"Yes: priced as if every model scored 55","Same capability, any lab"],
+    ["SITC","SIT, 70/30 basket",L.sitc,sitChg("sitc"),"Yes","A fixed mix of the two tiers"],
+  ];
+  if(ti.SDLLMTK)rows.push(["SDLLMTK",ti.SDLLMTK.name,ti.SDLLMTK.value,pctS(ti.SDLLMTK.change)+" over "+ti.SDLLMTK.changePeriod,"No: usage-weighted; moves when buyers switch models","What the whole market paid on average"]);
+  const labs=ti.OTPI?.labs||{};
+  Object.entries(labs).forEach(([lab,v])=>rows.push([`OTPI ${lab}`,`${ti.OTPI.name}, ${lab}`,v.value,pctS(v.change)+" over "+ti.OTPI.changePeriod,"No: blend of one lab's models","What one lab's tokens cost on average"]));
+  let h=`<thead><tr><th>Index</th><th class="l">Publisher and series</th><th>$ per 1M</th><th class="l">Change</th><th class="l">Holds quality constant</th><th class="l">Answers</th></tr></thead><tbody>`;
+  rows.forEach((r,i)=>{if(i===3)h+=`<tr class="tr"><td colspan="6">Existing token indices</td></tr>`;
+    h+=`<tr><td class="nm">${r[0]}</td><td class="l" style="font-family:var(--sans)">${r[1]}</td><td>${f$(r[2])}</td><td class="l">${r[3]}</td><td class="l" style="font-family:var(--sans);white-space:normal">${r[4]}</td><td class="l" style="font-family:var(--sans);white-space:normal">${r[5]}</td></tr>`;});
+  $("cmpTable").innerHTML=h+"</tbody>";
+  const R2=[];
+  if(ti.SDLLMTK&&isFinite(L.sitb))R2.push(`SITB (${f$(L.sitb)}) and SDLLMTK (${f$(ti.SDLLMTK.value)}) sit at similar levels today for different reasons. SDLLMTK averages what buyers actually bought, across every model. SITB prices a fixed level of capability. If buyers keep shifting to cheaper models, SDLLMTK falls even when no price changes; SITB only moves when the price of the same work does.`);
+  if(labs.Anthropic)R2.push(`Ornn's Anthropic index moved ${pctS(labs.Anthropic.change)} over ${ti.OTPI.changePeriod}. A move that size in a per-lab blend is more likely to reflect which of that lab's models are being bought than a matching cut in list prices. SIT separates the two: a model that gets cheaper lowers the index; a buyer switching models doesn't.`);
+  R2.push(`Neither existing index is linked to GPU-hours, so neither can be used to work out the crunch spread. SIT is paired with a measured heat rate (tokens per GPU-hour) for exactly that reason. See the sections below.`);
+  $("cmpRead").innerHTML=R2.map(x=>`<li>${x}</li>`).join("");
+  $("cmpAsOf").innerHTML=`Existing index values as published: SDLLMTK ${ti.SDLLMTK?.asOf?fmtDate(ti.SDLLMTK.asOf):"–"}, OTPI ${ti.OTPI?.asOf?fmtDate(ti.OTPI.asOf):"–"}. Sources: <a href="${ti.SDLLMTK?.url||"#"}" target="_blank" rel="noopener">Silicon Data</a>, <a href="${ti.OTPI?.url||"#"}" target="_blank" rel="noopener">Ornn</a>.`;
+}
+
+function rng(seed){let s=seed>>>0;return()=>{s+=0x6D2B79F5;let t=s;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296}}
+const SC={
+  base:{name:"Baseline",col:"--fg",beta:-0.35,lam:3,mu:0.10,txt:"Baseline: Xing's calibration. Prices revert towards a trend falling about 30% a year, with 40% volatility and three upward demand shocks a year."},
+  defl:{name:"Fast deflation",col:"--up",beta:-1.2,lam:2,mu:0.05,txt:"Fast deflation: the price of a fixed capability keeps falling at the 2023–26 pace, about 70% a year."},
+  scar:{name:"Scarcity",col:"--down",beta:0.15,lam:5,mu:0.25,txt:"Scarcity: power, chips and data centres fall behind agent demand. A gently rising trend with five large upward shocks a year."}};
+const simCache={};
+function simulate(P0,p,months,key){
+  if(simCache[key])return simCache[key];
+  const Rn=rng(20261103),N=2000,dt=1/48,steps=months*4,k=2.5,sig=.4,sJ=.25,g=.08,th0=Math.log(P0);
+  const gauss=()=>{let u=0,v=0;while(!u)u=Rn();while(!v)v=Rn();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)};
+  const P=[];for(let m=0;m<=months;m++)P.push(new Float64Array(N));
+  for(let n=0;n<N;n++){let X=th0;P[0][n]=P0;for(let s=1;s<=steps;s++){const t=s*dt;X+=k*(th0+p.beta*t+g*Math.sin(2*Math.PI*t)-X)*dt+sig*Math.sqrt(dt)*gauss();if(Rn()<p.lam*dt)X+=p.mu+sJ*gauss();if(s%4===0)P[s/4][n]=Math.exp(X);}}
+  const q=(a,f)=>{const s=Array.from(a).sort((x,y)=>x-y);return s[Math.floor(f*(s.length-1))]};
+  return simCache[key]=P.map(a=>({p10:q(a,.1),p25:q(a,.25),p50:q(a,.5),p75:q(a,.75),p90:q(a,.9)}));
+}
+const addM=(d,m)=>{const x=new Date(d);x.setUTCMonth(x.getUTCMonth()+m);return x;};
+const refVal=(row,c)=>{const ti=row.refs?.tokenIndices;if(!ti)return NaN;if(c==="sd")return ti.SDLLMTK?.value;return ti.OTPI?.labs?.[c]?.value;};
+const TCOL={sitb:"--sitb",sitf:"--sitf",sitc:"--gpu"};
+function histDraw(){
+  press("hTier",st.hTier);press("hSc",st.hSc);press("hH",st.hH);press("hCmp",st.hCmp);
+  const box=$("hChart");box.innerHTML="";$("hScText").textContent=SC[st.hSc].txt;
+  const name=st.hTier.toUpperCase(),col=TCOL[st.hTier];
+  const cmpName=st.hCmp==="none"?null:st.hCmp==="sd"?"SDLLMTK":"OTPI "+st.hCmp;
+  $("hLegend").innerHTML=`<span><span class="sw line" style="color:var(${col})"></span>${name} fixings</span>`+Object.values(SC).map(s=>`<span><span class="sw dash" style="color:var(${s.col})"></span>${s.name} median</span>`).join("")+(cmpName?`<span><span class="sw line" style="color:var(--muted)"></span>${cmpName} (as recorded)</span>`:"");
+  const hist=HIST.map(r=>({d:new Date(r.date+"T00:00:00Z"),v:r[st.hTier]})).filter(r=>isFinite(r.v));
+  if(!hist.length){box.innerHTML='<div class="empty">The chart draws once the first fixing is recorded.</div>';return;}
+  const cmp=cmpName?HIST.map(r=>({d:new Date(r.date+"T00:00:00Z"),v:refVal(r,st.hCmp)})).filter(r=>isFinite(r.v)&&r.v>0):[];
   const last=hist[hist.length-1];
-  const paths={};Object.entries(SC).forEach(([k,p])=>{paths[k]=simulate(last.v,p,st.h,`${st.tier}:${k}:${st.h}:${last.v}`).map((q,m)=>({d:addM(last.d,m),...q}));});
+  const paths={};Object.entries(SC).forEach(([k,p])=>{paths[k]=simulate(last.v,p,st.hH,`${st.hTier}:${k}:${st.hH}:${last.v}`).map((q,m)=>({d:addM(last.d,m),...q}));});
   const W=900,H=330,padL=64,padR=86,padT=12,padB=30;
-  const svg=el("svg",{viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":`${T.name} fixings and scenario projections`},box);
-  const x0=hist[0].d,x1=addM(last.d,st.h);
-  const all=[...hist.map(h=>h.v),...Object.values(paths).flatMap(p=>p.map(q=>q.p50)),...paths[st.sc].flatMap(q=>[q.p10,q.p90])];
+  const svg=el("svg",{viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":`${name} fixings and scenario projections`},box);
+  const x0=hist[0].d,x1=addM(last.d,st.hH);
+  const all=[...hist.map(h=>h.v),...cmp.map(c=>c.v),...Object.values(paths).flatMap(p=>p.map(q=>q.p50)),...paths[st.hSc].flatMap(q=>[q.p10,q.p90])];
   const lo=Math.min(...all)*.85,hi=Math.max(...all)*1.15;
   const x=d=>padL+(d-x0)/((x1-x0)||1)*(W-padL-padR);
   const y=v=>padT+(1-(Math.log(v)-Math.log(lo))/(Math.log(hi)-Math.log(lo)))*(H-padT-padB);
-  const cands=[0.01,0.02,0.05,0.1,0.2,0.5,1,2,5,10,20,50,100];
-  cands.filter(v=>v>=lo&&v<=hi).forEach(v=>{el("line",{x1:padL,x2:W-padR,y1:y(v),y2:y(v),stroke:"var(--grid)"},svg);txt(svg,padL-8,y(v)+4,money(v),"end");});
-  const nT=st.h===12?4:6;for(let i=0;i<=nT;i++){const d=new Date(+x0+(x1-x0)*i/nT);txt(svg,x(d),H-10,d.toLocaleDateString("en-GB",{month:"short",year:"2-digit",timeZone:"UTC"}),"middle");}
+  [0.01,0.02,0.05,0.1,0.2,0.5,1,2,5,10,20,50,100].filter(v=>v>=lo&&v<=hi).forEach(v=>{el("line",{x1:padL,x2:W-padR,y1:y(v),y2:y(v),stroke:"var(--grid)"},svg);txt(svg,padL-8,y(v)+4,f$(v),"end");});
+  const nT=st.hH===12?4:6;for(let i=0;i<=nT;i++){const d=new Date(+x0+(x1-x0)*i/nT);txt(svg,x(d),H-10,d.toLocaleDateString("en-GB",{month:"short",year:"2-digit",timeZone:"UTC"}),"middle");}
   el("line",{x1:x(last.d),x2:x(last.d),y1:padT,y2:H-padB,stroke:"var(--rule)","stroke-dasharray":"2 3"},svg);
   txt(svg,x(last.d)+4,padT+10,"latest fixing","start");
-  const P=paths[st.sc],scol=`var(${SC[st.sc].col})`;
+  const P=paths[st.hSc],scol=`var(${SC[st.hSc].col})`;
   const area=(a,b)=>P.map((q,i)=>`${i?"L":"M"}${x(q.d)},${y(q[a])}`).join("")+[...P].reverse().map(q=>`L${x(q.d)},${y(q[b])}`).join("")+"Z";
   el("path",{d:area("p90","p10"),fill:scol,"fill-opacity":.10},svg);
   el("path",{d:area("p75","p25"),fill:scol,"fill-opacity":.18},svg);
   const ends=[];
   Object.entries(SC).forEach(([k,s])=>{const p=paths[k];
-    el("path",{d:p.map((q,i)=>`${i?"L":"M"}${x(q.d)},${y(q.p50)}`).join(""),fill:"none",stroke:`var(${s.col})`,"stroke-width":k===st.sc?2:1.25,"stroke-dasharray":"5 4","stroke-linecap":"round",opacity:k===st.sc?1:.7},svg);
+    el("path",{d:p.map((q,i)=>`${i?"L":"M"}${x(q.d)},${y(q.p50)}`).join(""),fill:"none",stroke:`var(${s.col})`,"stroke-width":k===st.hSc?2:1.25,"stroke-dasharray":"5 4","stroke-linecap":"round",opacity:k===st.hSc?1:.7},svg);
     ends.push({col:s.col,v:p[p.length-1].p50,yy:y(p[p.length-1].p50)});});
   ends.sort((a,b)=>a.yy-b.yy);for(let i=1;i<ends.length;i++)if(ends[i].yy-ends[i-1].yy<14)ends[i].yy=ends[i-1].yy+14;
-  ends.forEach(e=>txt(svg,W-padR+8,e.yy+4,money(e.v),"start",`var(${e.col})`));
-  if(hist.length>1)el("path",{d:hist.map((h,i)=>`${i?"L":"M"}${x(h.d)},${y(h.v)}`).join(""),fill:"none",stroke:`var(${T.col})`,"stroke-width":2.25,"stroke-linejoin":"round","stroke-linecap":"round"},svg);
-  hist.forEach(h=>el("circle",{cx:x(h.d),cy:y(h.v),r:hist.length>40?2:3.5,fill:`var(${T.col})`,stroke:"var(--bg)","stroke-width":1.5},svg));
-  txt(svg,x(last.d)+8,y(last.v)+16,money(last.v),"start","var(--fg)");
-  // hover
-  const tip=document.createElement("div");tip.className="tip";box.appendChild(tip);
-  const rule=el("line",{y1:padT,y2:H-padB,stroke:"var(--faint)",opacity:0},svg);
+  ends.forEach(e=>txt(svg,W-padR+8,e.yy+4,f$(e.v),"start",`var(${e.col})`));
+  if(cmp.length){if(cmp.length>1)el("path",{d:cmp.map((h,i)=>`${i?"L":"M"}${x(h.d)},${y(h.v)}`).join(""),fill:"none",stroke:"var(--muted)","stroke-width":1.75},svg);
+    cmp.forEach(h=>el("circle",{cx:x(h.d),cy:y(h.v),r:3,fill:"var(--muted)",stroke:"var(--bg)","stroke-width":1.5},svg));}
+  if(hist.length>1)el("path",{d:hist.map((h,i)=>`${i?"L":"M"}${x(h.d)},${y(h.v)}`).join(""),fill:"none",stroke:`var(${col})`,"stroke-width":2.25,"stroke-linejoin":"round","stroke-linecap":"round"},svg);
+  hist.forEach(h=>el("circle",{cx:x(h.d),cy:y(h.v),r:hist.length>40?2:3.5,fill:`var(${col})`,stroke:"var(--bg)","stroke-width":1.5},svg));
+  txt(svg,x(last.d)+8,y(last.v)+16,f$(last.v),"start","var(--fg)");
+  const tip=tipFor(box);const rule=el("line",{y1:padT,y2:H-padB,stroke:"var(--faint)",opacity:0},svg);
   const ov=el("rect",{x:padL,y:padT,width:W-padL-padR,height:H-padT-padB,fill:"transparent"},svg);
   ov.addEventListener("pointermove",e=>{const sb=svg.getBoundingClientRect(),s=sb.width/W,mx=(e.clientX-sb.left)/s;
     const t=+x0+(mx-padL)/(W-padL-padR)*(x1-x0);let html,px;
-    if(t<=+last.d){let best=hist[0];hist.forEach(h=>{if(Math.abs(h.d-t)<Math.abs(best.d-t))best=h;});px=x(best.d);html=`<b>${fmtDate(best.d.toISOString().slice(0,10))}</b><br>${T.name} fixing ${money(best.v)}`;}
-    else{const m=Math.max(0,Math.min(st.h,Math.round((t-last.d)/(30.44*864e5))));px=x(paths.base[m].d);
-      html=`<b>${paths.base[m].d.toLocaleDateString("en-GB",{month:"short",year:"numeric",timeZone:"UTC"})}</b> · ${m} months on`+Object.entries(SC).map(([k,s])=>`<br>${s.name}: ${money(paths[k][m].p50)}`).join("")+`<br>${SC[st.sc].name} 80%: ${money(paths[st.sc][m].p10)}–${money(paths[st.sc][m].p90)}`;}
+    if(t<=+last.d){let best=hist[0];hist.forEach(h=>{if(Math.abs(h.d-t)<Math.abs(best.d-t))best=h;});px=x(best.d);
+      const c=cmp.find(c=>+c.d===+best.d);html=`<b>${fmtDate(best.d.toISOString().slice(0,10))}</b><br>${name} ${f$(best.v)}${c?`<br>${cmpName} ${f$(c.v)}`:""}`;}
+    else{const m=Math.max(0,Math.min(st.hH,Math.round((t-last.d)/(30.44*864e5))));px=x(paths.base[m].d);
+      html=`<b>${paths.base[m].d.toLocaleDateString("en-GB",{month:"short",year:"numeric",timeZone:"UTC"})}</b> · ${m} months on`+Object.entries(SC).map(([k,s])=>`<br>${s.name}: ${f$(paths[k][m].p50)}`).join("")+`<br>${SC[st.hSc].name} 80%: ${f$(paths[st.hSc][m].p10)}–${f$(paths[st.hSc][m].p90)}`;}
     rule.setAttribute("x1",px);rule.setAttribute("x2",px);rule.setAttribute("opacity",1);
-    tip.innerHTML=html;const bw=box.clientWidth;let left=px*s+12;if(left+tip.offsetWidth>bw)left=px*s-tip.offsetWidth-12;tip.style.left=Math.max(0,left)+"px";tip.style.top="6px";tip.style.opacity=1;});
-  ov.addEventListener("pointerleave",()=>{tip.style.opacity=0;rule.setAttribute("opacity",0);});
+    tip.innerHTML=html;tip.style.transform="none";const bw=box.clientWidth;let left=px*s+12;if(left+tip.offsetWidth>bw)left=px*s-tip.offsetWidth-12;tip.style.left=Math.max(0,left)+"px";tip.style.top="6px";tip.classList.add("on");});
+  ov.addEventListener("pointerleave",()=>{tip.classList.remove("on");rule.setAttribute("opacity",0);});
+  const e=paths[st.hSc][st.hH],c=(e.p50/last.v-1)*100;
+  $("hRead").innerHTML=`In the ${SC[st.hSc].name.toLowerCase()} scenario the median ${name} reaches <b class="mono">${f$(e.p50)}</b> in ${st.hH} months (${pctS(c,0)}), with an 80% range of <b class="mono">${f$(e.p10)}–${f$(e.p90)}</b>. The spread between scenarios is the price risk a SIT forward or cap would let a buyer or seller hand on.`;
+}
+function record(){
+  const tb=$("recBody");tb.replaceChildren();
+  [...HIST].reverse().forEach(r=>{const tr=document.createElement("tr");
+    [fmtDate(r.date),f$(r.sitb),f$(r.sitf),f$(r.sitc),`${f$(r.ctdB)} · ${r.ctdBModel||""}`,`${f$(r.ctdF)} · ${r.ctdFModel||""}`,f$(r.refs?.tokenIndices?.SDLLMTK?.value),r.note||""].forEach((v,i)=>{const td=document.createElement("td");td.textContent=v;if(i===7){td.className="l";td.style.whiteSpace="normal";td.style.fontFamily="var(--sans)";td.style.color="var(--muted)";}tr.appendChild(td);});
+    tb.appendChild(tr);});
 }
 
-draw();
-let rz;window.addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(draw,150);});
-
-(async()=>{
-  async function load(){
-    try{
-      const res=await fetch("/api/fixings",{cache:"no-store"});
-      if(!res.ok)throw new Error(res.status);
-      rows=(await res.json()).filter(r=>r&&typeof r.date==="string").sort((a,b)=>a.date<b.date?-1:1);
-      $("live").classList.add("on");
-      const L=rows[rows.length-1];
-      $("statusText").textContent=rows.length?`${rows.length} fixing${rows.length>1?"s":""} · next fixing 06:00 UTC daily`:"No fixings yet. The first one is written at the next daily run.";
-      draw();
-    }catch(e){$("live").classList.remove("on");$("statusText").textContent="Couldn't load fixings. Reload the page to try again.";}
-  }
-  await load();
-  setInterval(load,15*60*1000);
-})();
+async function boot(){
+  try{
+    const [h,r]=await Promise.all([fetch("/api/fixings",{cache:"no-store"}).then(x=>{if(!x.ok)throw new Error("fixings "+x.status);return x.json();}),fetch("/api/references").then(x=>{if(!x.ok)throw new Error("references "+x.status);return x.json();})]);
+    HIST=h.filter(x=>x&&typeof x.date==="string").sort((a,b)=>a.date<b.date?-1:1);REFS=r;
+    if(!HIST.length){$("status").textContent="No fixings recorded yet. The first one is written at the next daily run.";return;}
+    const last=HIST[HIST.length-1];
+    LATEST=await fetch("/api/fixings?date="+last.date,{cache:"no-store"}).then(x=>x.json());
+    MODELS=(LATEST.constituents||[]).map(c=>[c.model,c.lab,c.score,c.input,c.output,/estimated/i.test(c.priceSource||"")?1:0]);
+    TOP=Math.max(...MODELS.map(m=>m[2]));
+    const w=LATEST.weights||r.weights||{shares:{},otherShare:1.64};
+    SHARE_K=Object.fromEntries(Object.entries(w.shares||{}).map(([k,v])=>[labKey(k),v]));OTHER=w.otherShare??1.64;
+    const gr=r.gpuRent||{};GPU={ornn:gr.ornn||{},sd:gr.siliconData||{}};
+    OPEX=r.ownership?.opexPerHour||OPEX;CURVES=r.throughput?.curves||{};
+    if(!MODELS.some(m=>m[0]===st.model))st.model="";
+    $("fixDate").textContent=fmtDate(last.date);
+    $("live").classList.add("on");
+    $("status").textContent=`${HIST.length} fixing${HIST.length>1?"s":""} recorded · next fixing 06:00 UTC`;
+    render();
+  }catch(e){$("status").textContent="Couldn't load the index data. Reload the page to try again.";console.error(e);}
+}
+const bind=(id,key,num,keepPreset)=>document.querySelectorAll("#"+id+" button").forEach(b=>b.addEventListener("click",()=>{st[key]=num?parseFloat(b.dataset.v):b.dataset.v;if(!keepPreset)st.preset=null;render();}));
+bind("optA","alpha",1);bind("optMix","mix",1);bind("optW","wt",0);bind("optCap","cap",1);bind("optLife","life",1);bind("optThr","thr",0);
+bind("optSrc","src",0,1);bind("optLp","lp",1,1);bind("optTg","tg",1,1);bind("optRg","rg",1,1);bind("optSpd","speed",1,1);bind("cTier","tier",0,1);bind("cVol","vol",1,1);
+$("cModel").addEventListener("change",e=>{st.model=e.target.value;render();});
+document.querySelectorAll("#presets button").forEach(b=>b.addEventListener("click",()=>{st={...st,...PRESETS[b.dataset.p],preset:b.dataset.p};render();}));
+["floor","fcut","tpsB","tpsF","util","capH","capB","occ"].forEach(k=>$(k).addEventListener("input",e=>{st[k]=parseFloat(e.target.value);
+  if(k==="floor"&&st.floor>=st.fcut)st.fcut=st.floor+1;if(k==="fcut"&&st.fcut<=st.floor)st.floor=st.fcut-1;st.preset=null;render();}));
+[["hTier","hTier",0],["hSc","hSc",0],["hH","hH",1],["hCmp","hCmp",0]].forEach(([id,k,n])=>document.querySelectorAll("#"+id+" button").forEach(b=>b.addEventListener("click",()=>{st[k]=n?parseFloat(b.dataset.v):b.dataset.v;histDraw();})));
+$("reset").addEventListener("click",()=>{const keep={hTier:st.hTier,hSc:st.hSc,hH:st.hH,hCmp:st.hCmp};st={...DEF,...keep};render();});
+let rz;window.addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(()=>{if(LATEST)histDraw();},150);});
+boot();
 })();
 </script>
 

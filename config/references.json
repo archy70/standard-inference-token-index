@@ -1,0 +1,192 @@
+{
+ "asOf": "2026-11-02",
+ "note": "Edit by hand when Ornn or Silicon Data publish new values (data.ornn.com, silicondata.com). Each daily fixing stores a copy of tokenIndices and gpuRent, so updating this file builds a comparison history.",
+ "tokenIndices": {
+  "SDLLMTK": {
+   "name": "Silicon Data LLM Token Expenditure Index",
+   "value": 0.89,
+   "change": -6.3,
+   "changePeriod": "7 days",
+   "asOf": "2026-11-01",
+   "url": "https://www.silicondata.com/products/silicon-index/llm-token-expenditure-index"
+  },
+  "OTPI": {
+   "name": "Ornn Token Price Index",
+   "asOf": "2026-11-01",
+   "changePeriod": "1 month",
+   "url": "https://data.ornn.com/",
+   "labs": {
+    "Anthropic": {
+     "value": 0.82,
+     "change": -40.8
+    },
+    "OpenAI": {
+     "value": 0.32,
+     "change": -30.1
+    },
+    "Google": {
+     "value": 0.64,
+     "change": 10.3
+    },
+    "DeepSeek": {
+     "value": 0.03,
+     "change": -44.1
+    }
+   }
+  }
+ },
+ "gpuRent": {
+  "ornn": {
+   "name": "Ornn OCPI",
+   "asOf": "2026-11-02",
+   "H100": 3.38,
+   "H200": 6.21,
+   "B200": 9.44,
+   "change1m": {
+    "H100": 25.2,
+    "B200": 19.8
+   },
+   "url": "https://data.ornn.com/"
+  },
+  "siliconData": {
+   "name": "Silicon Data rental indices",
+   "asOf": "2026-11-01",
+   "H100": 2.96,
+   "H200": 3.45,
+   "B200": 6.54,
+   "url": "https://www.silicondata.com/products/silicon-index"
+  }
+ },
+ "ownership": {
+  "opexPerHour": {
+   "H100": 0.45,
+   "B200": 0.8
+  },
+  "note": "Power, hosting and staff per GPU-hour; estimates."
+ },
+ "throughput": {
+  "source": "SemiAnalysis InferenceX, late October 2026 (https://inferencex.semianalysis.com)",
+  "curves": {
+   "k3b200": {
+    "name": "Kimi K3",
+    "gpu": "B200",
+    "pts": [
+     [
+      30,
+      9605
+     ],
+     [
+      50,
+      6223
+     ],
+     [
+      75,
+      3809
+     ],
+     [
+      100,
+      2677
+     ],
+     [
+      150,
+      1653
+     ]
+    ],
+    "tco": 1.73,
+    "wl": "Agentic"
+   },
+   "k3gb200": {
+    "name": "Kimi K3",
+    "gpu": "GB200 NVL72",
+    "pts": [
+     [
+      30,
+      10638
+     ],
+     [
+      50,
+      8488
+     ],
+     [
+      75,
+      6543
+     ],
+     [
+      100,
+      4288
+     ],
+     [
+      150,
+      2183
+     ],
+     [
+      200,
+      1352
+     ]
+    ],
+    "tco": 1.86,
+    "wl": "Agentic"
+   },
+   "gptH100": {
+    "name": "gpt-oss-120b",
+    "gpu": "H100",
+    "pts": [
+     [
+      90,
+      6362
+     ],
+     [
+      143,
+      4148
+     ],
+     [
+      197,
+      2636
+     ]
+    ],
+    "tco": 1.17,
+    "wl": "8K/1K"
+   },
+   "gptB200": {
+    "name": "gpt-oss-120b",
+    "gpu": "B200",
+    "pts": [
+     [
+      90,
+      36090
+     ],
+     [
+      143,
+      24876
+     ],
+     [
+      197,
+      17465
+     ]
+    ],
+    "tco": 1.73,
+    "wl": "8K/1K"
+   },
+   "mmB200": {
+    "name": "MiniMax M3",
+    "gpu": "B200",
+    "pts": [
+     [
+      178,
+      33359
+     ],
+     [
+      291,
+      28503
+     ],
+     [
+      405,
+      16650
+     ]
+    ],
+    "tco": 1.73,
+    "wl": "Agentic"
+   }
+  }
+ }
+}

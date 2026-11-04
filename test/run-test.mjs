@@ -38,6 +38,8 @@ const opus = f.constituents.find((c) => c.model === "Claude Opus 5.5");
 assert.equal(opus.input, 3); assert.equal(opus.priceSource, "OpenRouter");
 assert.ok(f.sitf < 7.7446, "Opus price cut lowers SITF");
 assert.match(f.note, /repriced/);
+assert.ok(f.weights?.shares?.DeepSeek > 0, "weights stored with fixing");
+assert.equal(f.refs?.tokenIndices?.SDLLMTK?.value, 0.89, "references stored with fixing");
 const hist = await store.history();
 assert.deepEqual(hist.map((h) => h.date), ["2026-11-03", "2026-11-04"]);
 assert.ok(!("constituents" in hist[1]), "history holds summaries only");

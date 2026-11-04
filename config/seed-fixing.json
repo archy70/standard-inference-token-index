@@ -185,5 +185,82 @@
   "scores": "AA Intelligence Index v5 (modelcap.ai snapshot)",
   "prices": "list prices",
   "weights": "OpenRouter, week of 26 Oct 2026"
+ },
+ "weights": {
+  "shares": {
+   "DeepSeek": 29.8,
+   "OpenAI": 18.8,
+   "Google": 14.4,
+   "Z.ai": 11.9,
+   "Anthropic": 5.7,
+   "Qwen": 5.6,
+   "Meta": 1.5,
+   "Moonshot": 1.64,
+   "xAI": 1.64,
+   "Xiaomi": 1.64,
+   "MiniMax": 1.64,
+   "StepFun": 1.64
+  },
+  "otherShare": 1.64,
+  "asOf": "OpenRouter rankings, week of 26 Oct 2026 (share of requests by model author)"
+ },
+ "refs": {
+  "asOf": "2026-11-02",
+  "tokenIndices": {
+   "SDLLMTK": {
+    "name": "Silicon Data LLM Token Expenditure Index",
+    "value": 0.89,
+    "change": -6.3,
+    "changePeriod": "7 days",
+    "asOf": "2026-11-01",
+    "url": "https://www.silicondata.com/products/silicon-index/llm-token-expenditure-index"
+   },
+   "OTPI": {
+    "name": "Ornn Token Price Index",
+    "asOf": "2026-11-01",
+    "changePeriod": "1 month",
+    "url": "https://data.ornn.com/",
+    "labs": {
+     "Anthropic": {
+      "value": 0.82,
+      "change": -40.8
+     },
+     "OpenAI": {
+      "value": 0.32,
+      "change": -30.1
+     },
+     "Google": {
+      "value": 0.64,
+      "change": 10.3
+     },
+     "DeepSeek": {
+      "value": 0.03,
+      "change": -44.1
+     }
+    }
+   }
+  },
+  "gpuRent": {
+   "ornn": {
+    "name": "Ornn OCPI",
+    "asOf": "2026-11-02",
+    "H100": 3.38,
+    "H200": 6.21,
+    "B200": 9.44,
+    "change1m": {
+     "H100": 25.2,
+     "B200": 19.8
+    },
+    "url": "https://data.ornn.com/"
+   },
+   "siliconData": {
+    "name": "Silicon Data rental indices",
+    "asOf": "2026-11-01",
+    "H100": 2.96,
+    "H200": 3.45,
+    "B200": 6.54,
+    "url": "https://www.silicondata.com/products/silicon-index"
+   }
+  }
  }
 }
