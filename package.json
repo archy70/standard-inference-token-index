@@ -1,0 +1,15 @@
+{
+  "name": "sit-index",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Standard Inference Token (SIT) price index, fixed daily on Netlify.",
+  "scripts": {
+    "test": "node test/run-test.mjs",
+    "dev": "netlify dev"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  },
+  "engines": { "node": ">=20" }
+}

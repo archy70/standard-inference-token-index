@@ -1,0 +1,152 @@
+{
+ "source": "AA Intelligence Index v5 via modelcap.ai, 3 Nov 2026. Fallback list used when AA_API_KEY is not set; replace with a source you are allowed to republish for a public site.",
+ "models": [
+  {
+   "model": "Claude Opus 5.5",
+   "lab": "Anthropic",
+   "score": 58.4,
+   "input": 4,
+   "output": 20
+  },
+  {
+   "model": "GPT-6 Astra",
+   "lab": "OpenAI",
+   "score": 56.9,
+   "input": 10,
+   "output": 50
+  },
+  {
+   "model": "GPT-6.1 Sol",
+   "lab": "OpenAI",
+   "score": 54.5,
+   "input": 2,
+   "output": 10
+  },
+  {
+   "model": "Claude Sonnet 5.5",
+   "lab": "Anthropic",
+   "score": 54.2,
+   "input": 2,
+   "output": 10
+  },
+  {
+   "model": "GPT-6.1 Terra",
+   "lab": "OpenAI",
+   "score": 51.0,
+   "input": 1,
+   "output": 5
+  },
+  {
+   "model": "Gemini 4 Argon",
+   "lab": "Google",
+   "score": 50.4,
+   "input": 2,
+   "output": 10
+  },
+  {
+   "model": "Claude Fable 5.1",
+   "lab": "Anthropic",
+   "score": 49.0,
+   "input": 10,
+   "output": 50
+  },
+  {
+   "model": "Kimi K3.1 Pro",
+   "lab": "Moonshot",
+   "score": 46.0,
+   "input": 2,
+   "output": 10
+  },
+  {
+   "model": "Muse Wonder",
+   "lab": "Meta",
+   "score": 43.3,
+   "input": 4,
+   "output": 20
+  },
+  {
+   "model": "Claude Haiku 5.5",
+   "lab": "Anthropic",
+   "score": 36.2,
+   "input": 0.1,
+   "output": 0.5
+  },
+  {
+   "model": "Grok 4.7",
+   "lab": "xAI",
+   "score": 35.3,
+   "input": 2,
+   "output": 6
+  },
+  {
+   "model": "Qwen3.8 Max",
+   "lab": "Qwen",
+   "score": 33.6,
+   "input": 2,
+   "output": 6
+  },
+  {
+   "model": "DeepSeek V4.1 Flash",
+   "lab": "DeepSeek",
+   "score": 32.5,
+   "input": 0.15,
+   "output": 0.6
+  },
+  {
+   "model": "GLM 5.3",
+   "lab": "Z.ai",
+   "score": 31.7,
+   "input": 1.4,
+   "output": 4.4
+  },
+  {
+   "model": "Gemini 3.8 Flash",
+   "lab": "Google",
+   "score": 30.5,
+   "input": 0.75,
+   "output": 3.75
+  },
+  {
+   "model": "MiMo-V2.6-Pro",
+   "lab": "Xiaomi",
+   "score": 29.9,
+   "input": 0.17,
+   "output": 0.87
+  },
+  {
+   "model": "MiniMax M3.1 Flash",
+   "lab": "MiniMax",
+   "score": 28.9,
+   "input": 0.12,
+   "output": 0.6
+  },
+  {
+   "model": "Step 5 Preview",
+   "lab": "StepFun",
+   "score": 28.5,
+   "input": 0.54,
+   "output": 2.7
+  },
+  {
+   "model": "GPT-6 Luna",
+   "lab": "OpenAI",
+   "score": 27.8,
+   "input": 0.1,
+   "output": 0.5
+  },
+  {
+   "model": "GLM 5.3 Flash",
+   "lab": "Z.ai",
+   "score": 27.8,
+   "input": 0.15,
+   "output": 0.5
+  },
+  {
+   "model": "MiMo-V2.6-Flash",
+   "lab": "Xiaomi",
+   "score": 26.7,
+   "input": 0.06,
+   "output": 0.28
+  }
+ ]
+}

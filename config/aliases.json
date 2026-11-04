@@ -1,0 +1,3 @@
+{
+ "_comment": "Map a scored model's name to an OpenRouter model id when automatic name matching fails, e.g. \"Claude Opus 5.5\": \"anthropic/claude-opus-5.5\"."
+}

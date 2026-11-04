@@ -1,0 +1,19 @@
+{
+ "asOf": "OpenRouter rankings, week of 26 Oct 2026 (share of requests by model author)",
+ "note": "Update monthly from https://openrouter.ai/rankings. Labs not listed get otherShare each.",
+ "shares": {
+  "DeepSeek": 29.8,
+  "OpenAI": 18.8,
+  "Google": 14.4,
+  "Z.ai": 11.9,
+  "Anthropic": 5.7,
+  "Qwen": 5.6,
+  "Meta": 1.5,
+  "Moonshot": 1.64,
+  "xAI": 1.64,
+  "Xiaomi": 1.64,
+  "MiniMax": 1.64,
+  "StepFun": 1.64
+ },
+ "otherShare": 1.64
+}
